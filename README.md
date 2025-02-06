@@ -13,7 +13,8 @@
 
 * a. MNIST classification problem
 * b. Perceptron, Multi-Layer Perceptron, Learning Problem
-* c. Loss Functions (MSE, Cross-Entropy), Gradient Descent, Stochastic Gradient Descent, Backpropagation
+* c. Loss Functions (MSE, Cross-Entropy), Gradient Descent, Stochastic Gradient Descent, Backpropagation 
+    https://colah.github.io/posts/2015-08-Backprop/
 * d. Activation Functions, Fully Connected Layers, First Neural Network
 * e. Overfitting and Underfitting
 * f. Convolutional Neural Networks, Pooling, Batch Normalization, LeNet
@@ -38,4 +39,6 @@
 * d. CLIP, Visual Question Answering
 * e. Image Captioning
 * f. Multi-Modal Learning
+
+## What you will learn from this course?
 
