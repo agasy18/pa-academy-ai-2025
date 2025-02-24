@@ -11,10 +11,9 @@
 
 ### 2. Image Classification
 
-* a. MNIST classification problem
-* b. Perceptron, Multi-Layer Perceptron, Learning Problem
-* c. Loss Functions (MSE, Cross-Entropy), Gradient Descent, Stochastic Gradient Descent, Backpropagation 
-    https://colah.github.io/posts/2015-08-Backprop/
+* a. [MNIST classification problem](course/2.%20Image%20Classification/a.%20MNIST%20Classification.md)
+* b. [Perceptron, Multi-Layer Perceptron, Learning Problem](course/2.%20Image%20Classification/b.%20Perceptron%20and%20MLP.md)
+* c. [Loss Functions (MSE, Cross-Entropy), Gradient Descent, Stochastic Gradient Descent, Backpropagation](course/2.%20Image%20Classification/c.%20Loss%20Functions%20and%20Optimization.md)
 * d. Activation Functions, Fully Connected Layers, First Neural Network
 * e. Overfitting and Underfitting
 * f. Convolutional Neural Networks, Pooling, Batch Normalization, LeNet
