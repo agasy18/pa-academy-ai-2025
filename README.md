@@ -1,43 +1,123 @@
-# Picsart Academy AI Course 2025
+## 🧭 Proposed Simplified Structure (with “zero-stress” learning flow)
 
-## Course
+### **Module 1: Deep Learning Fundamentals**
 
-### 1. Introduction to AI
+**Duration:** 2 weeks
+**Goal:** Understand how a neural network *learns* and *predicts*.
 
-* a. What is AI? What is Machine Learning?
-* b. Problems (Classification, Regression, Clustering, Reinforcement Learning)
-* c. Learning methods (Supervised, Unsupervised, Reinforcement)
-* d. PyTorch, Numpy, Scikit-Learn, Pandas, Matplotlib
+**Topics (Simplified & Interactive):**
 
-### 2. Image Classification
+* What is a Neural Network? (analogy: “neurons as weighted decision units”)
+* Forward & Backward Propagation (interactive visual demo)
+* Activation Functions (using ReLU vs Sigmoid hands-on plots)
+* Loss Functions (MSE, Cross-Entropy — intuition via toy examples)
+* Building your first NN (on a simple dataset like predicting house prices or XOR)
 
-* a. [MNIST classification problem](course/2.%20Image%20Classification/a.%20MNIST%20Classification.md)
-* b. [Perceptron, Multi-Layer Perceptron, Learning Problem](course/2.%20Image%20Classification/b.%20Perceptron%20and%20MLP.md)
-* c. [Loss Functions (MSE, Cross-Entropy), Gradient Descent, Stochastic Gradient Descent, Backpropagation](course/2.%20Image%20Classification/c.%20Loss%20Functions%20and%20Optimization.md)
-* d. Activation Functions, Fully Connected Layers, First Neural Network
-* e. Overfitting and Underfitting
-* f. Convolutional Neural Networks, Pooling, Batch Normalization, LeNet
-* g. Regularization(L1, L2, Dropout)
-* h. AlexNet, VGG, ResNet
-* i. Data Augmentation
-* j. Similar Image Search
-* k. Segmentation (UNet, Receptive Field, Dilated Convolutions, Pointwise-Separable Convolutions)
-* l. Object Detection (SSD), Transfer Learning
+**Hands-on:**
+👉 Build a small NN from scratch in NumPy
+👉 Train using a toy dataset and visualize the learning curve
 
-### 3. Netural Language Processing
-* a. Word Embedding, Autoencoder, LSTM
+---
 
-### 4. Image Generation 
-* a. Face Generation with Autoencoder
-* b. Style Transfer, Super Resolution
+### **Module 2: Computer Vision I — Seeing with CNNs**
 
-### 5. Transformer & Multi-Modal
-* a. Transformer, Attention Mechanism
-* b. BERT, GPT
-* c. Stable Diffusion
-* d. CLIP, Visual Question Answering
-* e. Image Captioning
-* f. Multi-Modal Learning
+**Duration:** 2 weeks
+**Goal:** Understand how CNNs “see” patterns and edges.
 
-## What you will learn from this course?
+**Topics:**
 
+* Intuition of Convolution (interactive kernel visualization)
+* Filters, Strides, Pooling — visual demos
+* CNN Architectures (LeNet → VGG → ResNet — intuition only)
+* Regularization (Dropout), Normalization (BatchNorm)
+* Data Augmentation made fun (flip, rotate, color-jitter demos)
+
+**Hands-on:**
+👉 Train a CNN on MNIST or Fashion-MNIST
+👉 Experiment with augmentation & observe accuracy changes
+
+---
+
+### **Module 3: Computer Vision II — Beyond Classification**
+
+**Duration:** 2 weeks
+**Goal:** Expand from image *classification* to *detection* and *segmentation*.
+
+**Topics:**
+
+* Receptive Fields — why deeper = more context
+* Transfer Learning (reusing pre-trained CNNs)
+* Object Detection & Segmentation (intro-level YOLO / UNet intuition)
+* Evaluation Metrics (Precision, Recall, IoU — explained with visuals)
+
+**Hands-on:**
+👉 Use transfer learning (e.g. ResNet on a new dataset)
+👉 Try a pretrained YOLOv5 or UNet model on custom images
+
+---
+
+### **Module 4: NLP — Teaching Machines to Read**
+
+**Duration:** 2 weeks
+**Goal:** Understand how AI processes and generates text.
+
+**Topics:**
+
+* From Words to Numbers (Tokenization, Embeddings, Word2Vec)
+* Text Classification (sentiment analysis example)
+* Sequence Models (LSTM — intuition, visualize time steps)
+* Transformers & Attention (interactive demo)
+* Pre-trained Models (BERT & GPT — how they understand context)
+
+**Hands-on:**
+👉 Build a simple sentiment classifier
+👉 Use a pretrained transformer to answer questions or summarize text
+
+---
+
+### **Module 5: Multi-Modal AI — Seeing + Reading Together**
+
+**Duration:** 2 weeks
+**Goal:** Show how AI connects vision and language.
+
+**Topics:**
+
+* What is Multi-Modal Learning? (e.g., “AI that describes what it sees”)
+* CLIP concept (match text & image embeddings)
+* Image Captioning (encoder-decoder idea)
+* Visual Question Answering — combine text + vision inputs
+
+**Hands-on:**
+👉 Use CLIP to find similar images from text
+👉 Build a simple image captioning app (with pre-trained models)
+
+---
+
+### 🔁 Rhythm & Pedagogy
+
+Each week:
+
+* **Lesson 1 (2h):** Concept + interactive demo (with minimal math)
+* **Lesson 2 (2h):** Guided coding + mini challenge
+
+Every 2 modules → **mini project** (e.g. “Build your own image classifier” or “Train a chatbot”).
+
+---
+
+Would you like me to:
+
+1. **Add estimated durations per module and per topic** (to fill the “TO BE ADDED” parts)?
+2. Or first, refine the **content depth** (what stays vs what gets simplified/removed)?
+
+We can do both, but let’s pick one to focus on next.
+
+---
+
+## 📽️ Slides (Reveal.js)
+
+- Quick start: from repo root run `python3 -m http.server` and visit `http://localhost:8000/slides/`
+- Open individual lessons from the index page:
+  - `slides/lesson1.html`
+  - `slides/lesson2.html`
+  - `slides/lesson3.html`
+  - `slides/lesson4.html`

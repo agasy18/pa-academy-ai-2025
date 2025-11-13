@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 1 — From Regression to Deep Learning</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <style>
+      .reveal section pre code { font-size: 0.8em; line-height: 1.3; }
+      .small { font-size: 0.8em; }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 1: From Regression to Deep Learning</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li>Why linear models fail on complex data</li>
+            <li>How layers + activations extend regression</li>
+            <li>Visualize decision boundaries forming</li>
+            <li>Forward pass intuition with minimal math</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Why Regression Isn’t Enough</h3>
+          <ul>
+            <li>Recall logistic regression decision boundaries</li>
+            <li>Curved datasets (circles, spirals) break linear separability</li>
+            <li>Prompt: “How could we bend this decision line?”</li>
+          </ul>
+          <aside class="notes">Show concentric circles and spirals; stress limitation of linear separators.</aside>
+        </section>
+
+        <section>
+          <h3>Minimal Math → Big Idea</h3>
+          <pre><code>z = w₁x₁ + w₂x₂ + b
+α = σ(z)
+
+# Two-layer idea (schematic):
+y = σ(W₂ · σ(W₁x + b₁) + b₂)
+          </code></pre>
+          <p>Each neuron ≈ small regression; stacking makes flexible boundaries.</p>
+        </section>
+
+        <section>
+          <h3>Interactive Demo (TF Playground)</h3>
+          <ol>
+            <li>Select circular or spiral dataset</li>
+            <li>No hidden layers → poor separation</li>
+            <li>1 hidden layer (8) → improvement</li>
+            <li>2 layers (8+8) → complex shapes classified</li>
+            <li>Tune activations, learning rate, noise</li>
+          </ol>
+          <p class="small"><em>Discuss:</em> Why deeper → better patterns? What might each neuron learn?</p>
+        </section>
+
+        <section>
+          <h3>Mini Hands-On</h3>
+          <p>Implement the idea in Keras on synthetic 2D points.</p>
+          <pre><code class="language-python">from tensorflow import keras
+from tensorflow.keras.layers import Dense
+
+model = keras.Sequential([
+  Dense(8, activation='relu', input_shape=(2,)),
+  Dense(8, activation='relu'),
+  Dense(1, activation='sigmoid')
+])
+# model.compile(...); model.fit(...)
+          </code></pre>
+          <p class="small">Plot decision regions; relate to Playground behavior.</p>
+        </section>
+
+        <section>
+          <h3>Wrap-Up</h3>
+          <ul>
+            <li>How is a neuron like regression?</li>
+            <li>Why do we need activation functions?</li>
+          </ul>
+          <p class="small"><strong>Homework:</strong> Recreate Playground experiment; note effect of layers/activations.</p>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        slideNumber: true,
+        transition: 'slide',
+        plugins: [RevealNotes, RevealHighlight]
+      });
+    </script>
+  </body>
+  </html>
+

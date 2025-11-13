@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 2 — How Neural Networks Learn</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <style>
+      .reveal section pre code { font-size: 0.8em; line-height: 1.3; }
+      .small { font-size: 0.8em; }
+    </style>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 2: How Neural Networks Learn</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li>Define loss as model error</li>
+            <li>Understand gradient descent conceptually</li>
+            <li>See parameter updates through training</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Recap</h3>
+          <ul>
+            <li>Forward pass and activations</li>
+            <li>Decision boundaries intuition</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Concept: Loss & Optimization</h3>
+          <ul>
+            <li>Loss = distance between prediction and truth</li>
+            <li>Gradient descent = hill climb in reverse</li>
+            <li>Learning rate controls step size</li>
+          </ul>
+          <aside class="notes">Show a simple convex surface, then noisy non-convex; discuss local minima vs good-enough minima.</aside>
+        </section>
+
+        <section>
+          <h3>Hands-On (NumPy loop)</h3>
+          <pre><code class="language-python"># Pseudocode
+for step in range(steps):
+    y_pred = model(X, W)
+    loss = mse(y_true, y_pred)
+    grad = dloss_dW(X, y_true, y_pred)
+    W -= lr * grad
+          </code></pre>
+          <ul>
+            <li>Visualize loss decreasing</li>
+            <li>Experiment with learning rate</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Wrap-Up</h3>
+          <p>What happens if learning rate = 10?</p>
+          <p class="small"><strong>Homework:</strong> Modify rate; record results. Optional: derive MSE gradient.</p>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script>
+      Reveal.initialize({
+        hash: true,
+        slideNumber: true,
+        transition: 'slide',
+        plugins: [RevealNotes, RevealHighlight]
+      });
+    </script>
+  </body>
+  </html>
+
