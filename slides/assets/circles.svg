@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .axis { stroke: #cccccc; stroke-width:1; }
+      .pos { fill: #2b83ba; opacity: 0.9; }
+      .neg { fill: #d7191c; opacity: 0.9; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="560" height="300"/>
+  <!-- axes -->
+  <line class="axis" x1="20" y1="150" x2="540" y2="150"/>
+  <line class="axis" x1="280" y1="20" x2="280" y2="280"/>
+
+  <!-- Concentric circles point cloud (two classes) -->
+  <!-- Outer ring (class A) -->
+  <g>
+    <circle class="pos" cx="420" cy="150" r="3"/>
+    <circle class="pos" cx="395" cy="215" r="3"/>
+    <circle class="pos" cx="335" cy="245" r="3"/>
+    <circle class="pos" cx="280" cy="240" r="3"/>
+    <circle class="pos" cx="225" cy="245" r="3"/>
+    <circle class="pos" cx="165" cy="215" r="3"/>
+    <circle class="pos" cx="140" cy="150" r="3"/>
+    <circle class="pos" cx="165" cy="85" r="3"/>
+    <circle class="pos" cx="225" cy="55" r="3"/>
+    <circle class="pos" cx="280" cy="60" r="3"/>
+    <circle class="pos" cx="335" cy="55" r="3"/>
+    <circle class="pos" cx="395" cy="85" r="3"/>
+  </g>
+
+  <!-- Inner ring (class B) -->
+  <g>
+    <circle class="neg" cx="340" cy="150" r="3"/>
+    <circle class="neg" cx="315" cy="185" r="3"/>
+    <circle class="neg" cx="280" cy="195" r="3"/>
+    <circle class="neg" cx="245" cy="185" r="3"/>
+    <circle class="neg" cx="220" cy="150" r="3"/>
+    <circle class="neg" cx="245" cy="115" r="3"/>
+    <circle class="neg" cx="280" cy="105" r="3"/>
+    <circle class="neg" cx="315" cy="115" r="3"/>
+  </g>
+
+  <text x="30" y="30" font-family="system-ui, sans-serif" font-size="14" fill="#333">Concentric circles — not linearly separable</text>
+</svg>
+

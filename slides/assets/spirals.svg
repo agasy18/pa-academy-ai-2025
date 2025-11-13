@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
+  <defs>
+    <style>
+      .bg { fill: #ffffff; }
+      .axis { stroke: #cccccc; stroke-width:1; }
+      .a { fill: #2b83ba; opacity: 0.9; }
+      .b { fill: #d7191c; opacity: 0.9; }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="560" height="300"/>
+  <line class="axis" x1="20" y1="150" x2="540" y2="150"/>
+  <line class="axis" x1="280" y1="20" x2="280" y2="280"/>
+
+  <!-- Two intertwined spirals (schematic dots) -->
+  <!-- Class A spiral (covers all quadrants) -->
+  <g>
+    <circle class="a" cx="292" cy="150" r="3"/>
+    <circle class="a" cx="294" cy="164" r="3"/>
+    <circle class="a" cx="280" cy="178" r="3"/>
+    <circle class="a" cx="255" cy="175" r="3"/>
+    <circle class="a" cx="236" cy="150" r="3"/>
+    <circle class="a" cx="244" cy="114" r="3"/>
+    <circle class="a" cx="280" cy="90" r="3"/>
+    <circle class="a" cx="327" cy="102" r="3"/>
+    <circle class="a" cx="356" cy="150" r="3"/>
+    <circle class="a" cx="339" cy="209" r="3"/>
+    <circle class="a" cx="280" cy="242" r="3"/>
+    <circle class="a" cx="210" cy="220" r="3"/>
+  </g>
+  <!-- Class B spiral (phase-shifted; also covers all quadrants) -->
+  <g>
+    <circle class="b" cx="268" cy="150" r="3"/>
+    <circle class="b" cx="266" cy="136" r="3"/>
+    <circle class="b" cx="280" cy="122" r="3"/>
+    <circle class="b" cx="305" cy="125" r="3"/>
+    <circle class="b" cx="324" cy="150" r="3"/>
+    <circle class="b" cx="316" cy="186" r="3"/>
+    <circle class="b" cx="280" cy="210" r="3"/>
+    <circle class="b" cx="233" cy="198" r="3"/>
+    <circle class="b" cx="204" cy="150" r="3"/>
+    <circle class="b" cx="221" cy="91" r="3"/>
+    <circle class="b" cx="280" cy="58" r="3"/>
+    <circle class="b" cx="350" cy="80" r="3"/>
+  </g>
+
+  <text x="30" y="30" font-family="system-ui, sans-serif" font-size="14" fill="#333">Intertwined spirals — not linearly separable</text>
+</svg>

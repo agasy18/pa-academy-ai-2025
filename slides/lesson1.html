@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
     <style>
-      .reveal section pre code { font-size: 0.8em; line-height: 1.3; }
+      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
       .small { font-size: 0.8em; }
+      .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
     </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
   <body>
     <div class="reveal">
@@ -20,11 +22,12 @@
           <h2>Lesson 1: From Regression to Deep Learning</h2>
           <h3>Learning Objectives</h3>
           <ul>
-            <li>Why linear models fail on complex data</li>
-            <li>How layers + activations extend regression</li>
-            <li>Visualize decision boundaries forming</li>
-            <li>Forward pass intuition with minimal math</li>
+            <li class="fragment">Why linear models fail on complex data</li>
+            <li class="fragment">How layers + activations extend regression</li>
+            <li class="fragment">Visualize decision boundaries forming</li>
+            <li class="fragment">Forward pass intuition with minimal math</li>
           </ul>
+          <aside class="notes">Total time ~2h. Intro 15m; Minimal Math 25m; Playground 45m; Mini Hands-On 30m; Wrap 10m.</aside>
         </section>
 
         <section>
@@ -34,18 +37,78 @@
             <li>Curved datasets (circles, spirals) break linear separability</li>
             <li>Prompt: “How could we bend this decision line?”</li>
           </ul>
-          <aside class="notes">Show concentric circles and spirals; stress limitation of linear separators.</aside>
+          <div class="img-row">
+            <img src="assets/circles.svg" alt="Concentric circles" width="44%" />
+            <img src="assets/spirals.svg" alt="Intertwined spirals" width="44%" />
+          </div>
+          <aside class="notes">Show concentric circles and spirals; stress limitation of linear separators. Ask students to draw a single straight line to separate — impossible.</aside>
         </section>
 
         <section>
-          <h3>Minimal Math → Big Idea</h3>
-          <pre><code>z = w₁x₁ + w₂x₂ + b
-α = σ(z)
+          <h3>Notation</h3>
+          <ul>
+            <li class="fragment">Input vector: \(\mathbf{x} \in \mathbb{R}^d\)</li>
+            <li class="fragment">Weights: \(\mathbf{w} \in \mathbb{R}^d\), bias: \(b \in \mathbb{R}\)</li>
+            <li class="fragment">Activation (nonlinearity): \(\sigma(\cdot)\) e.g., ReLU, sigmoid</li>
+          </ul>
+          <p class="small">Tip: hidden layers typically use ReLU; outputs use sigmoid (binary) or softmax (multiclass).</p>
+          <aside class="notes">Define symbols up front so later equations read easily.</aside>
+        </section>
 
-# Two-layer idea (schematic):
-y = σ(W₂ · σ(W₁x + b₁) + b₂)
-          </code></pre>
-          <p>Each neuron ≈ small regression; stacking makes flexible boundaries.</p>
+        <section>
+          <h3>Single Neuron (Scalar Output)</h3>
+          <p>Linear combination + nonlinearity:</p>
+          <p style="font-size:1.2em">\[ \hat{y} = \sigma\big( \mathbf{w}^\top \mathbf{x} + b \big) \]</p>
+          <p class="small">Without \(\sigma\), this is just linear regression/logistic logit.</p>
+          <p class="small">Shapes: \(\mathbf{x}\in\mathbb{R}^d\), \(\mathbf{w}\in\mathbb{R}^d\), \(b\in\mathbb{R}\), \(\hat{y}\in\mathbb{R}\). Common \(\sigma\): ReLU, tanh, sigmoid.</p>
+        </section>
+
+        <section>
+          <h3>Layer (Vector Form)</h3>
+          <p>Compute multiple neurons at once:</p>
+          <p style="font-size:1.2em">\[ \mathbf{a}^{(1)} = \sigma\big( \mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)} \big) \]</p>
+          <p class="small">\(\mathbf{W}^{(1)} \in \mathbb{R}^{m\times d}\) maps input to \(m\) hidden units.</p>
+          <p class="small">Shapes: \(\mathbf{b}^{(1)}\in\mathbb{R}^m\), \(\mathbf{a}^{(1)}\in\mathbb{R}^m\). \(\sigma\) applies elementwise.</p>
+        </section>
+
+        <section>
+          <h3>Two-Layer Network</h3>
+          <p>Compose layers to get flexible decision boundaries:</p>
+          <p style="font-size:1.2em">\[ \hat{y} = \sigma^{(2)}\!\big( \mathbf{W}^{(2)} \, \sigma^{(1)}( \mathbf{W}^{(1)}\mathbf{x} + \mathbf{b}^{(1)} ) + \mathbf{b}^{(2)} \big) \]</p>
+          <p class="small">Each layer: linear map + nonlinearity. Stacking learns features of features.</p>
+          <p class="small">Shapes: hidden size \(m\), output size \(k\). \(\mathbf{W}^{(2)}\in\mathbb{R}^{k\times m}\), \(\mathbf{b}^{(2)}\in\mathbb{R}^k\), \(\hat{y}\in\mathbb{R}^k\). Typical: \(\sigma^{(1)}=\)ReLU, \(\sigma^{(2)}=\)sigmoid/softmax.</p>
+        </section>
+
+        <section>
+          <h3>Key Themes</h3>
+          <ul>
+            <li class="fragment">Linear part learns weighted combinations; bias shifts thresholds</li>
+            <li class="fragment">Nonlinearity lets boundaries bend (beyond any single line)</li>
+            <li class="fragment">Depth composes simple units into complex patterns</li>
+          </ul>
+          <aside class="notes">This formal view pairs with the Playground intuition on the next slide.</aside>
+        </section>
+
+        <section>
+          <h3>Neuron + Bias Intuition</h3>
+          <ul>
+            <li class="fragment">Linear part: z = w · x + b</li>
+            <li class="fragment">Activation: a = σ(z) adds nonlinearity</li>
+            <li class="fragment">Bias b moves the decision threshold</li>
+            <li class="fragment">Layers stack these simple units</li>
+          </ul>
+          <aside class="notes">Draw a small node diagram: inputs → weighted sum → activation.</aside>
+        </section>
+
+        <section>
+          <h3>Forward Pass — Step by Step</h3>
+          <ol>
+            <li class="fragment">Compute each layer’s z = W·x + b</li>
+            <li class="fragment">Apply activation a = σ(z)</li>
+            <li class="fragment">Feed a into next layer</li>
+            <li class="fragment">Final output → prediction</li>
+          </ol>
+          <p class="small">We’ll worry about learning (backprop) next lesson.</p>
         </section>
 
         <section>
@@ -58,6 +121,8 @@ y = σ(W₂ · σ(W₁x + b₁) + b₂)
             <li>Tune activations, learning rate, noise</li>
           </ol>
           <p class="small"><em>Discuss:</em> Why deeper → better patterns? What might each neuron learn?</p>
+          <p class="small"><a href="https://playground.tensorflow.org" target="_blank">Open TensorFlow Playground</a></p>
+          <aside class="notes">Spend ~45m exploring. Ask students to predict the effect before changing a knob.</aside>
         </section>
 
         <section>
@@ -77,12 +142,73 @@ model = keras.Sequential([
         </section>
 
         <section>
+          <h3>Code: Make a 2D Dataset</h3>
+          <pre><code class="language-python"># Option A: use scikit-learn (concise)
+from sklearn.datasets import make_circles
+import numpy as np
+
+X, y = make_circles(n_samples=1000, factor=0.5, noise=0.1, random_state=0)
+X = X.astype('float32')
+y = y.astype('float32')
+
+# Option B: quick NumPy spiral (for the curious)
+def make_spiral(n=500, noise=0.2):
+    n2 = n//2
+    t = np.linspace(0, 2*np.pi, n2)
+    r = np.linspace(0.2, 1.0, n2)
+    x1 = np.c_[r*np.cos(t), r*np.sin(t)] + noise*np.random.randn(n2,2)
+    x2 = np.c_[-r*np.cos(t), -r*np.sin(t)] + noise*np.random.randn(n2,2)
+    Xs = np.vstack([x1, x2]).astype('float32')
+    ys = np.r_[np.zeros(n2), np.ones(n2)].astype('float32')
+    return Xs, ys
+          </code></pre>
+          <aside class="notes">If sklearn isn’t available, use the NumPy spiral. Keep sample size small to train fast.</aside>
+        </section>
+
+        <section>
+          <h3>Code: Compile, Train, Evaluate</h3>
+          <pre><code class="language-python">from tensorflow import keras
+from tensorflow.keras.layers import Dense
+
+model = keras.Sequential([
+    Dense(8, activation='relu', input_shape=(2,)),
+    Dense(8, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+history = model.fit(X, y, batch_size=32, epochs=20, validation_split=0.2, verbose=0)
+
+print('Val acc (last):', history.history['val_accuracy'][-1])
+          </code></pre>
+          <p class="small">Expect validation accuracy to improve over epochs; details next lesson.</p>
+        </section>
+
+        <section>
+          <h3>Code: Plot Decision Regions</h3>
+          <pre><code class="language-python">import numpy as np, matplotlib.pyplot as plt
+
+xx, yy = np.meshgrid(np.linspace(X[:,0].min()-0.5, X[:,0].max()+0.5, 200),
+                     np.linspace(X[:,1].min()-0.5, X[:,1].max()+0.5, 200))
+grid = np.c_[xx.ravel(), yy.ravel()].astype('float32')
+probs = model.predict(grid, verbose=0).reshape(xx.shape)
+
+plt.figure(figsize=(5,4))
+plt.contourf(xx, yy, probs, levels=20, cmap='RdBu', alpha=0.6)
+plt.scatter(X[:,0], X[:,1], c=y, cmap='RdBu', edgecolor='k', s=12)
+plt.title('Decision regions')
+plt.show()
+          </code></pre>
+          <p class="small">Relate the learned boundary to the Playground visuals.</p>
+        </section>
+
+        <section>
           <h3>Wrap-Up</h3>
           <ul>
             <li>How is a neuron like regression?</li>
             <li>Why do we need activation functions?</li>
           </ul>
           <p class="small"><strong>Homework:</strong> Recreate Playground experiment; note effect of layers/activations.</p>
+          <aside class="notes">Collect 1–2 volunteer summaries. Preview next lesson: loss and gradient descent.</aside>
         </section>
 
       </div>
@@ -101,4 +227,3 @@ model = keras.Sequential([
     </script>
   </body>
   </html>
-
