@@ -11,6 +11,9 @@
       .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
       .small { font-size: 0.8em; }
       .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
+      .graphviz svg { max-width: 80%; height: auto; }
+      .activation-plot { margin: 0.3rem 0 0.5rem; }
+      .activation-plot img { max-width: 45%; height: auto; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -27,7 +30,7 @@
             <li class="fragment">Visualize decision boundaries forming</li>
             <li class="fragment">Forward pass intuition with minimal math</li>
           </ul>
-          <aside class="notes">Total time ~2h. Intro 15m; Minimal Math 25m; Playground 45m; Mini Hands-On 30m; Wrap 10m.</aside>
+          <aside class="notes">Welcome everyone and briefly set expectations: “In this first lesson we’ll see why basic regression breaks down on complex data, and how neural networks fix that with layers and activations.” Walk through the four bullets, highlighting that we’ll stay mostly visual and intuitive. Mention rough timing for each block (intro, minimal math, playground exploration, mini hands-on, wrap-up) so learners know what’s coming. Transition: “Let’s start by seeing a situation where plain regression just can’t cope.”</aside>
         </section>
 
         <section>
@@ -41,7 +44,7 @@
             <img src="assets/circles.svg" alt="Concentric circles" width="44%" />
             <img src="assets/spirals.svg" alt="Intertwined spirals" width="44%" />
           </div>
-          <aside class="notes">Show concentric circles and spirals; stress limitation of linear separators. Ask students to draw a single straight line to separate — impossible.</aside>
+          <aside class="notes">Point to the circles and spirals and ask: “If I give logistic regression these points, what kind of decision boundary can it make?” Let students recall that it’s essentially a straight line in the original space. Then ask them to imagine drawing a single line that separates the colors — they’ll see it’s impossible. Emphasize that the problem is not the optimizer; it’s the model’s geometry being too simple. Transition: “To fix that we’ll introduce a very small building block: a neuron.”</aside>
         </section>
 
         <section>
@@ -51,8 +54,8 @@
             <li class="fragment">Weights: \(\mathbf{w} \in \mathbb{R}^d\), bias: \(b \in \mathbb{R}\)</li>
             <li class="fragment">Activation (nonlinearity): \(\sigma(\cdot)\) e.g., ReLU, sigmoid</li>
           </ul>
-          <p class="small">Tip: hidden layers typically use ReLU; outputs use sigmoid (binary) or softmax (multiclass).</p>
-          <aside class="notes">Define symbols up front so later equations read easily.</aside>
+          <p class="small">Tip: hidden layers typically use ReLU; outputs use sigmoid for binary classification.</p>
+          <aside class="notes">Slowly define each symbol: \(\mathbf{x}\) as the input features, \(\mathbf{w}\) as learnable weights, \(b\) as a bias term, and \(\sigma\) as a nonlinearity. Keep this light: the goal is recognition, not memorization. You can ask: “Which of these are parameters we’ll learn, and which are just inputs?” Make sure they understand that \(\sigma\) is a function applied elementwise. Transition: “Now let’s plug these symbols into the simplest possible neuron.”</aside>
         </section>
 
         <section>
@@ -61,32 +64,35 @@
           <p style="font-size:1.2em">\[ \hat{y} = \sigma\big( \mathbf{w}^\top \mathbf{x} + b \big) \]</p>
           <p class="small">Without \(\sigma\), this is just linear regression/logistic logit.</p>
           <p class="small">Shapes: \(\mathbf{x}\in\mathbb{R}^d\), \(\mathbf{w}\in\mathbb{R}^d\), \(b\in\mathbb{R}\), \(\hat{y}\in\mathbb{R}\). Common \(\sigma\): ReLU, tanh, sigmoid.</p>
+          <aside class="notes">Explain that the neuron first computes a weighted sum \(w^\top x + b\), then passes it through \(\sigma\). Emphasize that without \(\sigma\), this is just a linear model, no more powerful than regression in terms of decision shapes. Ask: “Where exactly does the nonlinearity live, in this formula?” and wait for someone to point to \(\sigma\). Briefly mention common choices (ReLU, tanh, sigmoid) and that we’ll treat them as black boxes for now. Transition: “Let’s add a bit of intuition for what the bias and activation are doing.”</aside>
         </section>
 
         <section>
-          <h3>Layer (Vector Form)</h3>
-          <p>Compute multiple neurons at once:</p>
-          <p style="font-size:1.2em">\[ \mathbf{a}^{(1)} = \sigma\big( \mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)} \big) \]</p>
-          <p class="small">\(\mathbf{W}^{(1)} \in \mathbb{R}^{m\times d}\) maps input to \(m\) hidden units.</p>
-          <p class="small">Shapes: \(\mathbf{b}^{(1)}\in\mathbb{R}^m\), \(\mathbf{a}^{(1)}\in\mathbb{R}^m\). \(\sigma\) applies elementwise.</p>
-        </section>
-
-        <section>
-          <h3>Two-Layer Network</h3>
-          <p>Compose layers to get flexible decision boundaries:</p>
-          <p style="font-size:1.2em">\[ \hat{y} = \sigma^{(2)}\!\big( \mathbf{W}^{(2)} \, \sigma^{(1)}( \mathbf{W}^{(1)}\mathbf{x} + \mathbf{b}^{(1)} ) + \mathbf{b}^{(2)} \big) \]</p>
-          <p class="small">Each layer: linear map + nonlinearity. Stacking learns features of features.</p>
-          <p class="small">Shapes: hidden size \(m\), output size \(k\). \(\mathbf{W}^{(2)}\in\mathbb{R}^{k\times m}\), \(\mathbf{b}^{(2)}\in\mathbb{R}^k\), \(\hat{y}\in\mathbb{R}^k\). Typical: \(\sigma^{(1)}=\)ReLU, \(\sigma^{(2)}=\)sigmoid/softmax.</p>
-        </section>
-
-        <section>
-          <h3>Key Themes</h3>
+          <h3>ReLU Activation</h3>
+          <p class="small">\(\mathrm{ReLU}(z) = \max(0, z)\) — default for hidden layers.</p>
+          <div class="activation-plot">
+            <img src="assets/relu_activation.png" alt="ReLU activation function" />
+          </div>
           <ul>
-            <li class="fragment">Linear part learns weighted combinations; bias shifts thresholds</li>
-            <li class="fragment">Nonlinearity lets boundaries bend (beyond any single line)</li>
-            <li class="fragment">Depth composes simple units into complex patterns</li>
+            <li class="fragment">Zero for negative inputs, linear for positive</li>
+            <li class="fragment">Keeps computation simple and fast</li>
+            <li class="fragment">Works well as a default for hidden layers</li>
           </ul>
-          <aside class="notes">This formal view pairs with the Playground intuition on the next slide.</aside>
+          <aside class="notes">Define ReLU as max(0, z). Point out the flat region for z &lt; 0 and the line with slope 1 for z &gt; 0. State that we will use ReLU in hidden layers throughout this lesson.</aside>
+        </section>
+
+        <section>
+          <h3>Sigmoid Activation</h3>
+          <p class="small">\(\sigma(z) = \frac{1}{1 + e^{-z}}\) — used for binary outputs.</p>
+          <div class="activation-plot">
+            <img src="assets/sigmoid_activation.png" alt="Sigmoid activation function" />
+          </div>
+          <ul>
+            <li class="fragment">Maps any real number to (0, 1)</li>
+            <li class="fragment">Interpretable as probability for binary class</li>
+            <li class="fragment">Used on the final neuron in this lesson</li>
+          </ul>
+          <aside class="notes">Define sigmoid as 1 / (1 + e^{-z}). Emphasize that its output lies in (0, 1), which makes it suitable for binary probabilities. State that we use sigmoid only on the final output neuron in Lesson 1.</aside>
         </section>
 
         <section>
@@ -97,7 +103,83 @@
             <li class="fragment">Bias b moves the decision threshold</li>
             <li class="fragment">Layers stack these simple units</li>
           </ul>
-          <aside class="notes">Draw a small node diagram: inputs → weighted sum → activation.</aside>
+          <aside class="notes">Verbally draw the story: inputs come in with different importance (weights), we add them up with a bias shifting the threshold, and then \(\sigma\) decides how ‘on’ the neuron is. Ask: “If I increase the bias, does the neuron fire more easily or less easily?” Use this to anchor the idea that biases shift decision thresholds. Connect back to logistic regression: it has the same ingredients but without stacking. Transition: “Now let’s turn this intuition into a little diagram.”</aside>
+        </section>
+
+        <section>
+          <h3>Diagram: Single Neuron</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph neuron {
+  rankdir=LR;
+  node [shape=circle, fontsize=12];
+
+  x1 [label="x₁"];
+  x2 [label="x₂"];
+  x3 [label="x₃"];
+  h  [label="σ(w·x + b)"];
+
+  x1 -> h;
+  x2 -> h;
+  x3 -> h;
+}
+          </code></pre>
+          <p class="small">Multiple inputs are combined into a single neuron that applies σ to \(w \cdot x + b\).</p>
+          <aside class="notes">Walk left to right: name the inputs \(x_1, x_2, x_3\) and the neuron as \(\sigma(w \cdot x + b)\). Say out loud: “All roads lead into this neuron, which combines them and decides how much signal to pass on.” Ask: “If we set one of these weights to zero, what happens to that connection?” and let learners see that the neuron can ignore irrelevant features. Transition: “One neuron is nice, but we really want many neurons working in parallel, which is where layers come in.”</aside>
+        </section>
+
+        <section>
+          <h3>Layer (Vector Form)</h3>
+          <p>Compute multiple neurons at once:</p>
+          <p style="font-size:1.2em">\[ \mathbf{a}^{(1)} = \sigma\big( \mathbf{W}^{(1)} \mathbf{x} + \mathbf{b}^{(1)} \big) \]</p>
+          <p class="small">\(\mathbf{W}^{(1)} \in \mathbb{R}^{m\times d}\) maps input to \(m\) hidden units.</p>
+          <p class="small">Shapes: \(\mathbf{b}^{(1)}\in\mathbb{R}^m\), \(\mathbf{a}^{(1)}\in\mathbb{R}^m\). \(\sigma\) applies elementwise.</p>
+          <aside class="notes">Connect this back to the previous diagram: each row of \(\mathbf{W}^{(1)}\) corresponds to one neuron’s incoming weights. Explain that we stack neurons horizontally into a layer so that they all see the same input \(\mathbf{x}\) but learn different patterns. Emphasize that the matrix form is just a compact way of computing many \(w^\top x + b\) in one go. Transition: “If one layer can learn simple patterns, stacking layers should let us learn more complex ones.”</aside>
+        </section>
+
+        <section>
+          <h3>Two-Layer Network</h3>
+          <p>Compose layers to get flexible decision boundaries:</p>
+          <p style="font-size:1.2em">\[ \hat{y} = \sigma^{(2)}\!\big( \mathbf{W}^{(2)} \, \sigma^{(1)}( \mathbf{W}^{(1)}\mathbf{x} + \mathbf{b}^{(1)} ) + \mathbf{b}^{(2)} \big) \]</p>
+          <p class="small">Each layer: linear map + nonlinearity. Stacking learns features of features.</p>
+          <p class="small">Shapes: hidden size \(m\), output size \(k\). \(\mathbf{W}^{(2)}\in\mathbb{R}^{k\times m}\), \(\mathbf{b}^{(2)}\in\mathbb{R}^k\), \(\hat{y}\in\mathbb{R}^k\). Typical in this lesson: \(\sigma^{(1)}=\)ReLU, \(\sigma^{(2)}=\)sigmoid.</p>
+          <aside class="notes">Read this expression from the inside out: first layer transforms inputs into hidden features, the activation \(\sigma^{(1)}\) bends space, then a second layer mixes those features and applies \(\sigma^{(2)}\) to produce outputs. Use the phrase “features of features” and relate it to feature engineering they may have done by hand. Make the point that depth is about composing simple building blocks, not about magic. Transition: “To make this less abstract, let’s look at a picture of that two-layer network.”</aside>
+        </section>
+
+        <section>
+          <h3>Diagram: Two-Layer Network</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph two_layer {
+  rankdir=LR;
+  node [shape=circle, fontsize=12];
+
+  subgraph cluster_input {
+    label="Inputs";
+    color="white";
+    x1 [label="x₁"];
+    x2 [label="x₂"];
+  }
+
+  subgraph cluster_hidden {
+    label="Hidden layer (ReLU)";
+    color="lightgray";
+    h1 [label="h₁"];
+    h2 [label="h₂"];
+    h3 [label="h₃"];
+  }
+
+  subgraph cluster_output {
+    label="Output";
+    color="white";
+    y [label="ŷ"];
+  }
+
+  x1 -> h1; x1 -> h2; x1 -> h3;
+  x2 -> h1; x2 -> h2; x2 -> h3;
+  h1 -> y;  h2 -> y;  h3 -> y;
+}
+          </code></pre>
+          <p class="small">Inputs feed into hidden units, which then feed into the output neuron.</p>
+          <aside class="notes">Use the diagram to tell a simple story: inputs feed into a hidden layer that applies ReLU, then all hidden units feed into an output neuron. Trace a single path \(x_1 \rightarrow h_1 \rightarrow \hat{y}\) and explain how many such paths exist. Ask: “What might having more hidden neurons allow us to represent that fewer neurons cannot?” to surface the idea of capacity. Transition: “Now that we see the structure, let’s summarize how data flows through it step by step.”</aside>
         </section>
 
         <section>
@@ -109,6 +191,17 @@
             <li class="fragment">Final output → prediction</li>
           </ol>
           <p class="small">We’ll worry about learning (backprop) next lesson.</p>
+          <aside class="notes">Keep this slide conceptual: emphasize that a forward pass is just applying a series of linear maps and nonlinearities until we get a prediction. Say: “If we freeze the weights, this is a pure function — no randomness.” Then contrast that with training, which is about adjusting the weights so predictions improve. Transition: “So far we’ve talked in equations and diagrams; let’s now see these ideas play out visually in an interactive demo.”</aside>
+        </section>
+
+        <section>
+          <h3>Key Themes</h3>
+          <ul>
+            <li class="fragment">Linear part learns weighted combinations; bias shifts thresholds</li>
+            <li class="fragment">Nonlinearity lets boundaries bend (beyond any single line)</li>
+            <li class="fragment">Depth composes simple units into complex patterns</li>
+          </ul>
+          <aside class="notes">Briefly recap the three bullets, tying them back to the slides we just saw: linear parts, nonlinear activations, and depth. Ask the group if any of these still feel fuzzy and clarify quickly. Frame the next section: “We’re going to let a visual tool show us how these pieces behave when we tweak them.” Transition: “Next up is TensorFlow Playground, which makes these ideas very concrete.”</aside>
         </section>
 
         <section>
@@ -122,23 +215,29 @@
           </ol>
           <p class="small"><em>Discuss:</em> Why deeper → better patterns? What might each neuron learn?</p>
           <p class="small"><a href="https://playground.tensorflow.org" target="_blank">Open TensorFlow Playground</a></p>
-          <aside class="notes">Spend ~45m exploring. Ask students to predict the effect before changing a knob.</aside>
+          <aside class="notes">Introduce TensorFlow Playground as a sandbox: it shows you data, network architecture, and evolving decision boundaries. Give learners a few structured tasks: start with no hidden layers, then add one with 8 units, then two layers, watching the boundary change. Always ask them to predict before changing a knob, so they build intuition. Time-box the activity (~30–45 minutes) and circulate to answer questions. Transition: “Once you’ve seen the behavior interactively, we’ll code up a tiny version of this in PyTorch.”</aside>
         </section>
 
         <section>
           <h3>Mini Hands-On</h3>
-          <p>Implement the idea in Keras on synthetic 2D points.</p>
-          <pre><code class="language-python">from tensorflow import keras
-from tensorflow.keras.layers import Dense
+          <p>Implement the idea in PyTorch on synthetic 2D points.</p>
+          <pre><code class="language-python">import torch
+import torch.nn as nn
 
-model = keras.Sequential([
-  Dense(8, activation='relu', input_shape=(2,)),
-  Dense(8, activation='relu'),
-  Dense(1, activation='sigmoid')
-])
-# model.compile(...); model.fit(...)
+model = nn.Sequential(
+  nn.Linear(2, 8),
+  nn.ReLU(),
+  nn.Linear(8, 8),
+  nn.ReLU(),
+  nn.Linear(1, 1),
+  nn.Sigmoid(),
+)
+# optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+# loss_fn = nn.BCELoss()
+# training loop ...
           </code></pre>
           <p class="small">Plot decision regions; relate to Playground behavior.</p>
+          <aside class="notes">Present this as a starting template rather than something to memorize. Explain that the key ideas are: defining a simple MLP with ReLU, specifying an output with sigmoid, and later adding an optimizer and loss. Encourage students to focus on changing architecture (units, layers) and observing effects, not on writing everything from scratch. Transition: “To support that experiment, we first need a 2D dataset that behaves like the Playground ones.”</aside>
         </section>
 
         <section>
@@ -162,35 +261,52 @@ def make_spiral(n=500, noise=0.2):
     ys = np.r_[np.zeros(n2), np.ones(n2)].astype('float32')
     return Xs, ys
           </code></pre>
-          <aside class="notes">If sklearn isn’t available, use the NumPy spiral. Keep sample size small to train fast.</aside>
+          <aside class="notes">Explain the two dataset options: `make_circles` for quick concentric circles, and a simple NumPy spiral for when scikit-learn isn’t installed. Emphasize setting a fixed random seed and keeping the dataset small so training is fast and repeatable. Encourage students to try both datasets later and see how the decision boundary differs. Transition: “With data in hand, let’s wire it into our PyTorch model and actually train.”</aside>
         </section>
 
         <section>
-          <h3>Code: Compile, Train, Evaluate</h3>
-          <pre><code class="language-python">from tensorflow import keras
-from tensorflow.keras.layers import Dense
+          <h3>Code: Train and Evaluate (PyTorch)</h3>
+          <pre><code class="language-python">import torch
+import torch.nn as nn
 
-model = keras.Sequential([
-    Dense(8, activation='relu', input_shape=(2,)),
-    Dense(8, activation='relu'),
-    Dense(1, activation='sigmoid')
-])
-model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
-history = model.fit(X, y, batch_size=32, epochs=20, validation_split=0.2, verbose=0)
+X_t = torch.from_numpy(X)
+y_t = torch.from_numpy(y).unsqueeze(1)
 
-print('Val acc (last):', history.history['val_accuracy'][-1])
+model = nn.Sequential(
+    nn.Linear(2, 8),
+    nn.ReLU(),
+    nn.Linear(8, 8),
+    nn.ReLU(),
+    nn.Linear(8, 1),
+    nn.Sigmoid(),
+)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+loss_fn = nn.BCELoss()
+
+for epoch in range(20):
+    optimizer.zero_grad()
+    preds = model(X_t)
+    loss = loss_fn(preds, y_t)
+    loss.backward()
+    optimizer.step()
+
+print('Final training loss:', float(loss))
           </code></pre>
           <p class="small">Expect validation accuracy to improve over epochs; details next lesson.</p>
+          <aside class="notes">Instead of reading the code verbatim, narrate the pattern: we move NumPy arrays into tensors, define the model, choose an optimizer and loss, and then repeat the loop of zeroing gradients, forward pass, loss, backward, and optimizer step. Point back to the “Forward Pass” slide and show how this loop simply wraps it in a training procedure. Reassure learners that they’ll reuse this pattern many times; they don’t need to memorize it today. Transition: “After training, a great way to build intuition is to visualize what the model actually learned in input space.”</aside>
         </section>
 
         <section>
           <h3>Code: Plot Decision Regions</h3>
           <pre><code class="language-python">import numpy as np, matplotlib.pyplot as plt
+import torch
 
 xx, yy = np.meshgrid(np.linspace(X[:,0].min()-0.5, X[:,0].max()+0.5, 200),
                      np.linspace(X[:,1].min()-0.5, X[:,1].max()+0.5, 200))
 grid = np.c_[xx.ravel(), yy.ravel()].astype('float32')
-probs = model.predict(grid, verbose=0).reshape(xx.shape)
+with torch.no_grad():
+    grid_t = torch.from_numpy(grid)
+    probs = model(grid_t).detach().numpy().reshape(xx.shape)
 
 plt.figure(figsize=(5,4))
 plt.contourf(xx, yy, probs, levels=20, cmap='RdBu', alpha=0.6)
@@ -199,16 +315,19 @@ plt.title('Decision regions')
 plt.show()
           </code></pre>
           <p class="small">Relate the learned boundary to the Playground visuals.</p>
+          <aside class="notes">Walk through the plot: the contour shows predicted probabilities, and the scatter shows the true points. Ask students to describe the shape of the boundary and whether it matches their expectations from the Playground. Use any obvious errors (e.g., misclassified points) to discuss underfitting, overfitting, or architecture mis-match. Transition: “Finally, let’s wrap up the main takeaways and send you off with a small homework prompt.”</aside>
         </section>
 
         <section>
           <h3>Wrap-Up</h3>
           <ul>
-            <li>How is a neuron like regression?</li>
-            <li>Why do we need activation functions?</li>
+            <li>Neuron = regression + nonlinearity on top</li>
+            <li>Layers stack neurons to learn features of features</li>
+            <li>Depth + activations bend decision boundaries into complex shapes</li>
           </ul>
-          <p class="small"><strong>Homework:</strong> Recreate Playground experiment; note effect of layers/activations.</p>
-          <aside class="notes">Collect 1–2 volunteer summaries. Preview next lesson: loss and gradient descent.</aside>
+          <p class="small"><strong>Homework:</strong> Recreate one of the Playground experiments in the notebook (circles or spirals), try at least two different architectures, and write 2–3 sentences about how layers and activations changed the boundary.</p>
+          <p class="small">Next time: how networks actually learn these weights using loss functions and gradient descent.</p>
+          <aside class="notes">Invite one or two volunteers to summarize in their own words how a neuron relates to regression and why activations and depth matter. Use the three bullets to restate the mental model: “linear pieces + nonlinear squashes, stacked into layers, can carve out complex decision regions.” Clarify the homework expectations: pick a dataset, try a couple of architectures, and briefly reflect on what changed. Close by previewing the next lesson on loss and gradient descent so learners see how today’s forward-pass intuition will connect to training.</aside>
         </section>
 
       </div>
@@ -217,6 +336,8 @@ plt.show()
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
     <script>
       Reveal.initialize({
         hash: true,
@@ -224,6 +345,37 @@ plt.show()
         transition: 'slide',
         plugins: [RevealNotes, RevealHighlight]
       });
+
+      (function () {
+        if (typeof Viz === 'undefined') {
+          return;
+        }
+        const viz = new Viz();
+        const renderGraphs = () => {
+          const blocks = document.querySelectorAll('code.language-dot[data-graphviz]');
+          blocks.forEach((code) => {
+            const dot = code.textContent;
+            viz.renderSVGElement(dot)
+              .then((svg) => {
+                const container = document.createElement('div');
+                container.className = 'graphviz';
+                container.appendChild(svg);
+                const pre = code.parentNode;
+                if (pre && pre.parentNode) {
+                  pre.parentNode.replaceChild(container, pre);
+                }
+              })
+              .catch((err) => {
+                console.error('Graphviz render error:', err);
+              });
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderGraphs);
+        } else {
+          renderGraphs();
+        }
+      })();
     </script>
   </body>
   </html>
