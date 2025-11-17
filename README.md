@@ -2,20 +2,39 @@
 
 ### **Module 1: Deep Learning Fundamentals**
 
-**Duration:** 2 weeks
+**Duration:** 1 weeks
 **Goal:** Understand how a neural network *learns* and *predicts*.
 
 **Topics (Simplified & Interactive):**
 
-* What is a Neural Network? (analogy: “neurons as weighted decision units”)
-* Forward & Backward Propagation (interactive visual demo)
-* Activation Functions (using ReLU vs Sigmoid hands-on plots)
-* Loss Functions (MSE, Cross-Entropy — intuition via toy examples)
-* Building your first NN (on a simple dataset like predicting house prices or XOR)
+Lesson 1:
+* From linear / logistic regression to neural networks (when regression fails)
+* Neuron = linear model + activation (ReLU, sigmoid) on top
+* Layers and depth as compositions that bend decision boundaries (circles / spirals)
+* Forward pass intuition through a small 2D PyTorch model
+
+**Lesson 1 Homework:**
+* Recreate one of the Playground experiments in the notebook (circles or spirals), try at least two different architectures, 
+* find the the most depth network with least units
+* find the the least depth network with least units
+
+Lesson 2:
+* Activations and there properties and best use cases
+* Loss functions and their properties and best use cases
+* Oprimizers and their properties and best use cases
+* MNIST dataset, training, evaluation, and inference in notebook, ...etc
+
+**Lesson 2 Homework:**
+* Train a model on Fashion MNIST dataset, evaluate the model
+(if you have GPU or high-end CPU, CIFAR-10 is better)
+* Find the best architecture, optimizer, learning rate, and epochs
+* Add visualiztions as it done for Lesson 2 Pytorch MNIST notebook
+* Visualize the training and validation loss and accuracy curves
+* Infer the model on a new image shot by a camera with the best model
 
 **Hands-on:**
-👉 Build a small NN from scratch in NumPy
-👉 Train using a toy dataset and visualize the learning curve
+👉 Generate a non-linear 2D dataset (circles or spirals) and train a small PyTorch network
+👉 Visualize decision regions and relate them to the TensorFlow Playground experiments
 
 ---
 
@@ -117,7 +136,7 @@ We can do both, but let’s pick one to focus on next.
 
 - Quick start: from repo root run `python3 -m http.server` and visit `http://localhost:8000/slides/`
 - Open individual lessons from the index page:
-  - `slides/lesson1.html`
+  - `slides/lesson1.html` — Lesson 1: From Regression to Deep Learning (nonlinear 2D data, neurons, layers, activations, decision boundaries)
   - `slides/lesson2.html`
   - `slides/lesson3.html`
   - `slides/lesson4.html`
