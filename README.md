@@ -14,7 +14,7 @@ Lesson 1:
 * Forward pass intuition through a small 2D PyTorch model
 
 **Lesson 1 Homework:**
-* Recreate one of the Playground experiments in the notebook (circles or spirals), try at least two different architectures, 
+* Recreate one of the Playground experiments in the notebook spirals, try at least two different architectures, 
 * find the the most depth network with least units
 * find the the least depth network with least units
 
