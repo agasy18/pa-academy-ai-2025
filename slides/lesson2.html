@@ -447,6 +447,18 @@ probs = torch.softmax(logits, dim=1)  # optional: class probabilities for analys
         </section>
 
         <section>
+          <h3>Optimizer Comparison on MNIST</h3>
+          <div class="activation-plot">
+            <img src="assets/mnist_optimizer_comparison.png" alt="Training loss comparison for SGD, SGD+Momentum, and Adam on MNIST" />
+          </div>
+          <ul>
+            <li class="fragment">On a small MNIST MLP, SGD with momentum and Adam reduce training loss faster than plain SGD</li>
+            <li class="fragment">Momentum accelerates progress along consistent directions; Adam adapts step sizes per parameter</li>
+            <li class="fragment">Use Adam as a strong default; switch to SGD + momentum when you can afford tuning for large convnets</li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Learning Rate Intuition</h3>
           <ul>
             <li class="fragment">Too small → very slow training, may get stuck</li>
