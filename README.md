@@ -5,36 +5,30 @@
 **Duration:** 1 weeks
 **Goal:** Understand how a neural network *learns* and *predicts*.
 
-**Topics (Simplified & Interactive):**
-
-Lesson 1:
+***Lesson 1:***
 * From linear / logistic regression to neural networks (when regression fails)
 * Neuron = linear model + activation (ReLU, sigmoid) on top
 * Layers and depth as compositions that bend decision boundaries (circles / spirals)
 * Forward pass intuition through a small 2D PyTorch model
 
-**Lesson 1 Homework:**
+***Lesson 1 Homework:***
 * Recreate one of the Playground experiments in the notebook spirals, try at least two different architectures, 
 * find the the most depth network with least units
 * find the the least depth network with least units
 
-Lesson 2:
-* Activations and there properties and best use cases
-* Loss functions and their properties and best use cases
-* Oprimizers and their properties and best use cases
-* MNIST dataset, training, evaluation, and inference in notebook, ...etc
+***Lesson 2:***
+* Recap single neuron and activations; extend to common activation functions (ReLU, LeakyReLU, ELU, tanh, sigmoid, softmax, GELU) and their best use cases
+* Loss functions for regression (MSE, MAE) and classification (binary and multiclass cross-entropy), including cross-entropy as model “surprise”
+* Optimizers (SGD, SGD with momentum, Adam): update rules, intuition, and how they affect training dynamics
+* MNIST dataset: training, evaluation, and inference in the `notebooks/lesson2_Pytorch_MNIST.ipynb` notebook
 
-**Lesson 2 Homework:**
+***Lesson 2 Homework:***
 * Train a model on Fashion MNIST dataset, evaluate the model
 (if you have GPU or high-end CPU, CIFAR-10 is better)
 * Find the best architecture, optimizer, learning rate, and epochs
 * Add visualiztions as it done for Lesson 2 Pytorch MNIST notebook
 * Visualize the training and validation loss and accuracy curves
 * Infer the model on a new image shot by a camera with the best model
-
-**Hands-on:**
-👉 Generate a non-linear 2D dataset (circles or spirals) and train a small PyTorch network
-👉 Visualize decision regions and relate them to the TensorFlow Playground experiments
 
 ---
 

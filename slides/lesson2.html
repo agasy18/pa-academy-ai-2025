@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 2 — How Neural Networks Learn</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <style>
+      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
+      .small { font-size: 0.8em; }
+      .reveal section ul { margin-bottom: 0.4rem; }
+      .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
+      .graphviz svg { max-width: 55%; height: auto; display: block; margin: 0.2rem auto 0.3rem; }
+      .softmax-diagram .graphviz svg { max-width: 24%; }
+      .activation-plot { margin: 0.15rem 0 0.15rem; text-align: center; }
+      .activation-plot img { max-width: 32%; height: auto; }
+      .activation-plot + ul { margin-top: 0.2rem; }
+      .loss-code pre { margin-top: 0.25rem; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 2: How Neural Networks Learn</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Explain how neural networks learn from data (forward pass, loss, gradients, optimizers)</li>
+            <li class="fragment">Understand and compare common activation functions and when to use them</li>
+            <li class="fragment">Understand regression and classification losses, including cross-entropy as “surprise”</li>
+            <li class="fragment">Understand SGD, momentum, and Adam update rules and their effect on training</li>
+            <li class="fragment">Apply these ideas by training, evaluating, and running inference on MNIST in the PyTorch notebook</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Recap: Single Neuron & Activation</h3>
+          <p class="small">From Lesson 1: a single neuron computes a weighted sum, then applies an activation.</p>
+          <p class="small">\[
+            z = \sum_{i=1}^d w_i x_i + b, \quad
+            a = \sigma(z)
+          \]</p>
+          <ul>
+            <li class="fragment">\(x_i\): input features, \(w_i\): weights, \(b\): bias</li>
+            <li class="fragment">\(\sigma(\cdot)\): activation function (e.g., ReLU, sigmoid)</li>
+            <li class="fragment">Activation introduces nonlinearity so networks can model complex patterns</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Visualization: Simple Neuron</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph simple_neuron {
+  rankdir=LR;
+  node [fontsize=12];
+
+  x1 [label="x₁"];
+  x2 [label="x₂"];
+  x3 [label="x₃"];
+  neuron [label="z = w·x + b\n a = σ(z)", shape=circle, style=filled, fillcolor="#f5f5f5"];
+  y [label="output a", shape=box];
+
+  x1 -> neuron;
+  x2 -> neuron;
+  x3 -> neuron;
+  neuron -> y;
+}
+          </code></pre>
+          <p class="small">Inputs are combined linearly into \(z\), then passed through an activation \(\sigma\) to produce output \(a\).</p>
+        </section>
+
+        <section>
+          <h3>Activations and Learning</h3>
+          <ul>
+            <li class="fragment">Without nonlinear activations, stacked layers collapse to a single linear map</li>
+            <li class="fragment">Nonlinearities shape how gradients flow and what patterns can be learned</li>
+            <li class="fragment">Hidden layers: usually ReLU or variants (LeakyReLU, GELU)</li>
+            <li class="fragment">Output layer: choose activation to match task and loss</li>
+            <li class="fragment">Rule of thumb: ReLU in hidden layers, sigmoid or softmax at the output</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>ReLU in Practice</h3>
+          <p class="small">\(\mathrm{ReLU}(z) = \max(0, z)\) — standard for hidden units.</p>
+          <div class="activation-plot">
+            <img src="assets/relu_activation.png" alt="ReLU activation function" />
+          </div>
+          <ul>
+            <li class="fragment">Simple piecewise linear shape (0 for \(z \lt 0\), linear for \(z \gt 0\)); cheap to compute</li>
+            <li class="fragment">Sparse activations (many zeros) can help generalization</li>
+            <li class="fragment">Works well with modern optimizers like Adam for vision and tabular data</li>
+            <li class="fragment">If many units die (always zero), try LeakyReLU</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>LeakyReLU in Practice</h3>
+          <p class="small">\(\mathrm{LeakyReLU}_\alpha(z) = \max(\alpha z, z)\) with small \(\alpha \approx 0.01\).</p>
+          <div class="activation-plot">
+            <img src="assets/leakyrelu_activation.png" alt="LeakyReLU activation function and derivative" />
+          </div>
+          <ul>
+            <li class="fragment">Like ReLU but with a small negative slope for \(z \lt 0\)</li>
+            <li class="fragment">Reduces the “dying ReLU” problem by keeping gradients non-zero for negative inputs</li>
+            <li class="fragment">Useful when many ReLU units are stuck at zero during training</li>
+            <li class="fragment">Slightly more complex than ReLU but still cheap to compute</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>ELU in Practice</h3>
+          <p class="small">\(\mathrm{ELU}_\alpha(z) =
+            \begin{cases}
+              z & \text{if } z \ge 0 \\
+              \alpha (e^{z} - 1) & \text{if } z &lt; 0
+            \end{cases}\), typically with \(\alpha = 1\).</p>
+          <div class="activation-plot">
+            <img src="assets/elu_activation.png" alt="ELU activation function and derivative" />
+          </div>
+          <ul>
+            <li class="fragment">Smooth version of ReLU: negative inputs map to negative outputs instead of exactly 0</li>
+            <li class="fragment">Can help keep activations more zero-centered and reduce bias shift</li>
+            <li class="fragment">Slightly more expensive than ReLU/LeakyReLU due to the exponential</li>
+            <li class="fragment">Less common today than ReLU/LeakyReLU but still useful to try in some vision models</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>GELU in Practice</h3>
+          <p class="small">\(\mathrm{GELU}(z) \approx \tfrac{1}{2} z \big(1 + \tanh\big(\sqrt{\tfrac{2}{\pi}} (z + 0.044715 z^3)\big)\big)\).</p>
+          <p class="small">Smooth, probabilistic variant of ReLU, commonly used in transformers.</p>
+          <div class="activation-plot">
+            <img src="assets/gelu_activation.png" alt="GELU activation function and derivative" />
+          </div>
+          <ul>
+            <li class="fragment">Soft ReLU-like behavior with smooth gradients over all \(z\)</li>
+            <li class="fragment">Popular in large transformer models; more expensive than ReLU/LeakyReLU</li>
+            <li class="fragment">For small/medium models in this course, ReLU (or LeakyReLU) is usually sufficient</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Sigmoid in Practice</h3>
+          <div class="activation-plot">
+            <img src="assets/sigmoid_activation.png" alt="Sigmoid activation function and derivative" />
+          </div>
+          <ul>
+            <li class="fragment">Sigmoid squashes real-valued inputs to \((0, 1)\)</li>
+            <li class="fragment">Derivative is largest near 0 and tiny near 0 or 1 → can cause vanishing gradients when saturated</li>
+            <li class="fragment">Good for binary outputs with BCE-style losses; interpret as probability of class 1</li>
+            <li class="fragment">Avoid in deep hidden layers; prefer ReLU/LeakyReLU or GELU</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Tanh in Practice</h3>
+          <p class="small">\(\tanh(z) = \frac{e^{z} - e^{-z}}{e^{z} + e^{-z}}\) — squashes to \((-1, 1)\).</p>
+          <div class="activation-plot">
+            <img src="assets/tanh_activation.png" alt="Tanh activation function and derivative" />
+          </div>
+          <ul>
+            <li class="fragment">Outputs are zero-centered, which can help optimization compared to sigmoid</li>
+            <li class="fragment">Derivative is largest near 0 and saturates (goes to 0) for large \(|z|\)</li>
+            <li class="fragment">Historically popular in RNNs; less common in modern deep nets due to saturation</li>
+            <li class="fragment">Use when you need outputs roughly in \([-1, 1]\) and can tolerate vanishing gradients</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Softmax in Practice</h3>
+          <p class="small">\[
+            \text{softmax}_k(\mathbf{z}) = \frac{e^{z_k}}{\sum_j e^{z_j}}
+          \]</p>
+          <div class="softmax-diagram">
+          <pre><code class="language-dot" data-graphviz>
+digraph softmax_flow {
+  rankdir=LR;
+  node [fontsize=10];
+
+  x1  [label="NN score\n(cat)", shape=circle];
+  x2  [label="NN score\n(dog)", shape=circle];
+  x3  [label="NN score\n(plane)", shape=circle];
+  x4  [label="NN score\n(car)", shape=circle];
+
+  z1  [label="10\n(cat logit)", shape=box];
+  z2  [label="4\n(dog logit)", shape=box];
+  z3  [label="5\n(plane logit)", shape=box];
+  z4  [label="8\n(car logit)", shape=box];
+  sm  [label="softmax", shape=box, style=rounded];
+  p1  [label="0.873\nP(cat)"];
+  p2  [label="0.002\nP(dog)"];
+  p3  [label="0.006\nP(plane)"];
+  p4  [label="0.119\nP(car)"];
+
+  x1 -> z1 -> sm;
+  x2 -> z2 -> sm;
+  x3 -> z3 -> sm;
+  x4 -> z4 -> sm;
+  sm -> p1;
+  sm -> p2;
+  sm -> p3;
+  sm -> p4;
+}
+          </code></pre>
+          </div>
+          <ul>
+            <li class="fragment">Converts a vector of logits \(\mathbf{z}\) into a probability distribution over classes</li>
+            <li class="fragment">Used at the output of multi-class classifiers together with cross-entropy loss</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Activation Cheat Sheet</h3>
+          <ul>
+            <li class="fragment"><strong>Hidden layers:</strong> ReLU (default), LeakyReLU or ELU if many units die; GELU for transformer-style models</li>
+            <li class="fragment"><strong>Regression output:</strong> no activation (linear); optionally clamp in code if needed</li>
+            <li class="fragment"><strong>Binary classification:</strong> sigmoid output + binary cross-entropy style loss</li>
+            <li class="fragment"><strong>Multi-class (single label):</strong> logits + softmax + cross-entropy loss</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>From Forward Pass to Learning</h3>
+          <ul>
+            <li class="fragment">Forward pass: given weights, compute predictions \(\hat{y} = f_\theta(x)\)</li>
+            <li class="fragment">Learning: adjust parameters \(\theta\) to make predictions match labels \(y\)</li>
+            <li class="fragment">\(\theta\) collects all trainable parameters of the model (weights, biases, embeddings, etc.)</li>
+            <li class="fragment">We need: a way to measure error (loss) and a way to update \(\theta\) (optimizer)</li>
+            <li class="fragment">Training loop = repeat: forward → loss → gradients → parameter update</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Diagram: Training Loop</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph training_loop {
+  rankdir=LR;
+  node [shape=box, fontsize=12, style=rounded];
+
+  data      [label="Mini-batch (x, y)"];
+  model     [label="Model f_θ"];
+  preds     [label="Predictions ŷ"];
+  loss      [label="Loss L(ŷ, y)"];
+  grads     [label="Gradients ∂L/∂θ"];
+  optimizer [label="Optimizer update θ ← θ - η∂L/∂θ"];
+
+  data -> model -> preds -> loss -> grads -> optimizer;
+  optimizer -> model [label="updated θ", fontsize=10];
+}
+          </code></pre>
+          <p class="small">Key idea: the loss tells us how wrong we are; gradients tell us how to change \(\theta\).</p>
+        </section>
+
+        <section>
+          <h3>Gradient Descent: Core Idea</h3>
+          <p class="small">We want to move parameters \(\theta\) in the direction that reduces loss.</p>
+          <p class="small">\[
+            \theta_{\text{new}} = \theta_{\text{old}} - \eta \, \nabla_\theta L(\theta)
+          \]</p>
+          <ul>
+            <li class="fragment">\(\nabla_\theta L\): gradient — direction of steepest increase in loss</li>
+            <li class="fragment">\(\eta\): learning rate — how big each step is</li>
+            <li class="fragment">\(\theta\) typically includes all weights and biases (and any other trainable parameters) in the neural network</li>
+            <li class="fragment">Backpropagation efficiently computes these gradients layer by layer</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Mini-Batch Training</h3>
+          <ul>
+            <li class="fragment">Compute loss and gradients on a small batch of examples (e.g., 64 images)</li>
+            <li class="fragment">Update parameters after each batch → faster, more memory efficient</li>
+            <li class="fragment">Noisy gradients can actually help escape poor local minima</li>
+            <li class="fragment">In PyTorch, DataLoader handles batching and shuffling</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Code: Backpropagation in PyTorch</h3>
+          <pre><code class="language-python">for x_batch, y_batch in data_loader:
+    optimizer.zero_grad()        # reset gradients
+    logits = model(x_batch)      # forward pass
+    loss = loss_fn(logits, y_batch)
+    loss.backward()              # backprop: compute ∂L/∂θ
+    optimizer.step()             # gradient descent step on θ</code></pre>
+          <p class="small">This loop implements the steps: forward → loss → gradients via <code>backward()</code> → parameter update via <code>optimizer.step()</code>.</p>
+        </section>
+
+        <section>
+          <h3>Loss Functions: Measuring Error</h3>
+          <ul>
+            <li class="fragment">Loss \(L(\hat{y}, y)\) is low when predictions are good, high when they are bad</li>
+            <li class="fragment">We minimize average loss over the dataset: \(\frac{1}{N}\sum_i L(\hat{y}_i, y_i)\)</li>
+            <li class="fragment">Regression: often Mean Squared Error (MSE) or Mean Absolute Error (MAE)</li>
+            <li class="fragment">Classification: usually cross-entropy loss (works well with probabilities)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>MSE Loss in Practice</h3>
+          <p class="small">Mean Squared Error for real-valued targets \(y\) and predictions \(\hat{y}\):</p>
+          <p class="small">\[
+            L_{\text{MSE}} = \frac{1}{N}\sum_i (\hat{y}_i - y_i)^2
+          \]</p>
+          <ul>
+            <li class="fragment">Penalizes large errors more strongly (squares the error)</li>
+            <li class="fragment">Smooth gradients make it a good default for many regression problems</li>
+            <li class="fragment">Example (target \(y = 4\)): prediction \(5 \Rightarrow \text{MSE}=1\); prediction \(8 \Rightarrow \text{MSE}=16\)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>MAE Loss in Practice</h3>
+          <p class="small">Mean Absolute Error for real-valued targets \(y\) and predictions \(\hat{y}\):</p>
+          <p class="small">\[
+            L_{\text{MAE}} = \frac{1}{N}\sum_i \lvert \hat{y}_i - y_i \rvert
+          \]</p>
+          <ul>
+            <li class="fragment">More robust to outliers: large errors are not squared</li>
+            <li class="fragment">Gradient magnitude does not grow with the size of the error</li>
+            <li class="fragment">Example (target \(y = 4\)): prediction \(5 \Rightarrow \text{MAE}=1\); prediction \(8 \Rightarrow \text{MAE}=4\)</li>
+            <li class="fragment">Consider MAE when you have many outliers or heavy-tailed noise</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Binary Cross-Entropy (Sigmoid Output)</h3>
+          <p class="small">For binary labels \(y \in \{0, 1\}\) and predicted probability \(p = \hat{y}\):</p>
+          <p style="font-size:1.1em">\[
+            L_{\text{BCE}}(p, y) = -\big( y \log p + (1-y)\log(1-p) \big)
+          \]</p>
+          <ul>
+            <li class="fragment">Large penalty when we are confident and wrong</li>
+            <li class="fragment">Small penalty when we are confident and correct</li>
+            <li class="fragment">Works naturally with a sigmoid output in \((0,1)\)</li>
+            <li class="fragment">Interpretation: when \(y=1\), the loss is \(-\log p\); when \(y=0\), it is \(-\log(1-p)\) — in both cases this measures the model's "surprise" at the true label</li>
+            <li class="fragment">Example: \(y=1, p=0.9 \Rightarrow L \approx 0.11\); \(y=1, p=0.1 \Rightarrow L \approx 2.30\) (confident and wrong)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Multiclass Cross-Entropy (Softmax Output)</h3>
+          <p class="small">For class scores \(\mathbf{z} \in \mathbb{R}^K\) and true class index \(y \in \{0, \dots, K-1\}\):</p>
+          <p class="small">\[
+            \text{softmax}_k(\mathbf{z}) = \frac{e^{z_k}}{\sum_j e^{z_j}}, \quad
+            L(\mathbf{z}, y) = -\log \text{softmax}_{y}(\mathbf{z})
+          \]</p>
+          <ul>
+            <li class="fragment">Here \(y\) is the index of the true class; we take the softmax probability at position \(y\) and apply \(-\log\) to it</li>
+            <li class="fragment">Softmax converts scores into a probability distribution over classes</li>
+            <li class="fragment">Cross-entropy encourages high probability on the correct class</li>
+            <li class="fragment">Interpretation: \(-\log p(\text{correct class})\) is the model's "surprise" — low surprise for confident, correct predictions; high surprise when it assigns low probability to the true class</li>
+            <li class="fragment">Default choice for multi-class problems like MNIST (10 digits)</li>
+            <li class="fragment">Example: if the correct class has probability \(0.8\), loss is \(-\log 0.8 \approx 0.22\); if it has probability \(0.2\), loss is \(-\log 0.2 \approx 1.61\)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Logits, Softmax, and CrossEntropyLoss</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Model output:</strong> the last linear layer returns <em>logits</em> (unnormalized scores), not probabilities</li>
+            <li class="fragment"><code>nn.CrossEntropyLoss</code> expects logits and internally applies <code>LogSoftmax</code> + negative log-likelihood, so do <em>not</em> add a softmax layer inside the model</li>
+          </ul>
+          <div class="loss-code">
+          <pre><code class="language-python">import torch
+import torch.nn as nn
+
+logits = model(x_batch)               # shape: [batch_size, num_classes]
+targets = y_batch                     # integer class labels, shape: [batch_size]
+
+loss_fn = nn.CrossEntropyLoss()
+loss = loss_fn(logits, targets)       # expects raw logits
+
+pred_classes = logits.argmax(dim=1)   # class predictions from logits
+probs = torch.softmax(logits, dim=1)  # optional: class probabilities for analysis</code></pre>
+          </div>
+          <p class="small">Training: pass logits + integer labels to <code>CrossEntropyLoss</code>. Inference: use <code>argmax</code> on logits; apply <code>softmax</code> only if you need explicit probabilities.</p>
+        </section>
+
+        <section>
+          <h3>Matching Activation and Loss (PyTorch)</h3>
+          <ul>
+            <li class="fragment">Binary classification: use a single logit and <code>BCEWithLogitsLoss</code> (includes sigmoid)</li>
+            <li class="fragment">Multi-class classification: use logits of size K and <code>CrossEntropyLoss</code> (includes softmax)</li>
+            <li class="fragment">Regression: use linear outputs with <code>MSELoss</code> (or <code>L1Loss</code> for MAE)</li>
+            <li class="fragment">Always check that the model outputs and loss function expect the same shape and scale</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Optimizers: How We Step</h3>
+          <ul>
+            <li class="fragment"><strong>SGD</strong>: basic gradient descent with learning rate \(\eta\)</li>
+            <li class="fragment"><strong>SGD + Momentum</strong>: smooths updates using a running average of gradients</li>
+            <li class="fragment"><strong>Adam</strong>: adaptive step sizes per-parameter + momentum (good default)</li>
+            <li class="fragment">Choice affects convergence speed and stability, not model capacity</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>SGD with Momentum (Update Rule)</h3>
+          <p class="small">Momentum adds a velocity term that accumulates gradients over time.</p>
+          <p class="small">\[
+            v_{t} = \beta v_{t-1} + (1 - \beta)\,\nabla_\theta L_t, \quad
+            \theta_{t+1} = \theta_t - \eta v_t
+          \]</p>
+          <ul>
+            <li class="fragment">\(v_t\): running average of recent gradients (velocity)</li>
+            <li class="fragment">\(\beta \in [0,1)\): momentum factor (e.g., 0.9) controlling how much history to keep</li>
+            <li class="fragment">Helps smooth noisy gradients and accelerates progress along consistent directions</li>
+            <li class="fragment">In PyTorch: <code>torch.optim.SGD(model.parameters(), lr=..., momentum=0.9)</code></li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Adam Optimizer (Update Rule)</h3>
+          <p class="small">Adam keeps moving averages of both gradients and squared gradients.</p>
+          <p class="small">\[
+          \begin{aligned}
+            m_t &= \beta_1 m_{t-1} + (1-\beta_1)\,\nabla_\theta L_t \\
+            v_t &= \beta_2 v_{t-1} + (1-\beta_2)\,(\nabla_\theta L_t)^2 \\
+            \hat{m}_t &= \frac{m_t}{1-\beta_1^t}, \quad
+            \hat{v}_t = \frac{v_t}{1-\beta_2^t} \\
+            \theta_{t+1} &= \theta_t - \eta\,\frac{\hat{m}_t}{\sqrt{\hat{v}_t} + \epsilon}
+          \end{aligned}
+          \]</p>
+          <ul>
+            <li class="fragment">\(\hat{m}_t\): momentum-like term (first moment); \(\hat{v}_t\): per-parameter variance estimate (second moment)</li>
+            <li class="fragment">Adaptive step size: parameters with noisy/large gradients get smaller effective steps</li>
+            <li class="fragment">Works well out-of-the-box with defaults (\(\beta_1=0.9, \beta_2=0.999, \epsilon=10^{-8}\))</li>
+            <li class="fragment">In PyTorch: <code>torch.optim.Adam(model.parameters(), lr=1e-3)</code></li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Optimizer Cheat Sheet (PyTorch)</h3>
+          <ul>
+            <li class="fragment"><strong>Default:</strong> <code>Adam(model.parameters(), lr=1e-3)</code> for many small/medium models</li>
+            <li class="fragment"><strong>When to favor SGD:</strong> very large datasets or convnets, when you can tune learning rate + momentum</li>
+            <li class="fragment"><strong>AdamW:</strong> variant of Adam with better weight decay; common for transformers</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Learning Rate Intuition</h3>
+          <ul>
+            <li class="fragment">Too small → very slow training, may get stuck</li>
+            <li class="fragment">Too large → loss oscillates or diverges</li>
+            <li class="fragment">Practical tip: try \(\eta \in \{1e{-3}, 3e{-3}, 1e{-4}\}\) with Adam</li>
+            <li class="fragment">Always monitor training and validation curves</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Reading Training Curves</h3>
+          <ul>
+            <li class="fragment">Training loss ↓ and validation loss ↓ → learning and generalizing</li>
+            <li class="fragment">Training loss ↓, validation loss ↑ → overfitting</li>
+            <li class="fragment">Both flat → optimizer or learning rate issues</li>
+            <li class="fragment">Use curves to decide when to stop or adjust hyperparameters</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Switch to Notebook: MNIST</h3>
+          <ul>
+            <li class="fragment">Now we will apply these ideas end-to-end on MNIST in the companion notebook</li>
+            <li class="fragment">Open <code>notebooks/lesson2_Pytorch_MNIST.ipynb</code> to walk through:</li>
+            <li class="fragment">Loading MNIST, defining the model, training, evaluation, and simple inference examples</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script>
+      Reveal.initialize({
+        width: 1280,
+        height: 720,
+        hash: true,
+        slideNumber: true,
+        transition: 'slide',
+        plugins: [RevealNotes, RevealHighlight]
+      });
+
+      (function () {
+        if (typeof Viz === 'undefined') {
+          return;
+        }
+        const viz = new Viz();
+        const renderGraphs = () => {
+          const blocks = document.querySelectorAll('code.language-dot[data-graphviz]');
+          blocks.forEach((code) => {
+            const dot = code.textContent;
+            viz.renderSVGElement(dot)
+              .then((svg) => {
+                const container = document.createElement('div');
+                container.className = 'graphviz';
+                container.appendChild(svg);
+                const pre = code.parentNode;
+                if (pre && pre.parentNode) {
+                  pre.parentNode.replaceChild(container, pre);
+                }
+              })
+              .catch((err) => {
+                console.error('Graphviz render error:', err);
+              });
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderGraphs);
+        } else {
+          renderGraphs();
+        }
+      })();
+    </script>
+  </body>
+</html>
