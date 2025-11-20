@@ -1,11 +1,13 @@
 ## Picsart Academy Deep Learning 2025
 
+[Slides are available here](https://agasy18.github.io/pa-academy-ai-2025)
+
 ### **Module 1: Deep Learning Fundamentals**
 
 **Duration:** 1 weeks
 **Goal:** Understand how a neural network *learns* and *predicts*.
 
-***Lesson 1:*** [slides/lesson1.html](slides/lesson1.html)
+***Lesson 1:***
 * From linear / logistic regression to neural networks (when regression fails)
 * Neuron = linear model + activation (ReLU, sigmoid) on top
 * Layers and depth as compositions that bend decision boundaries (circles / spirals)
@@ -16,7 +18,7 @@
 * find the the most depth network with least units
 * find the the least depth network with least units
 
-***Lesson 2:*** [slides/lesson2.html](slides/lesson2.html)
+***Lesson 2:***
 * Recap single neuron and activations; extend to common activation functions (ReLU, LeakyReLU, ELU, tanh, sigmoid, softmax, GELU) and their best use cases
 * Loss functions for regression (MSE, MAE) and classification (binary and multiclass cross-entropy), including cross-entropy as model “surprise”
 * Optimizers (SGD, SGD with momentum, Adam): update rules, intuition, and how they affect training dynamics
