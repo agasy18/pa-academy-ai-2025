@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 3 — Convolutional Neural Networks</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <style>
+      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
+      .small { font-size: 0.8em; }
+      .reveal section ul { margin-bottom: 0.4rem; }
+      .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
+      .graphviz svg { max-width: 70%; height: auto; display: block; margin: 0.2rem auto 0.3rem; }
+      .layer-summary { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; justify-content: center; align-items: flex-start; }
+      .two-column > div { flex: 1 1 0; }
+      .code-small pre code { font-size: 0.8em; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 3: Convolutional Neural Networks (CNNs)</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand the problem CNNs solve compared to fully connected networks</li>
+            <li class="fragment">Build intuition for convolution, receptive fields, and pooling</li>
+            <li class="fragment">Explain regularization (Dropout) and normalization (BatchNorm) in CNNs</li>
+            <li class="fragment">Understand the LeNet architecture and where each layer fits</li>
+            <li class="fragment">Train a simple CNN on MNIST in the companion PyTorch notebook</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Motivation: Why CNNs?</h3>
+          <ul>
+            <li class="fragment">Images are high-dimensional: a \(28 \times 28\) grayscale image has 784 pixels; larger images have tens of thousands</li>
+            <li class="fragment">Fully connected layers treat every pixel independently and ignore spatial structure</li>
+            <li class="fragment">We want models that are sensitive to local patterns (edges, corners, textures) and reuse them across the image</li>
+            <li class="fragment">Convolutional layers do exactly this through local connectivity and weight sharing</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>From Dense to Convolutional</h3>
+          <div class="two-column small">
+            <div>
+              <strong>Fully Connected Layer</strong>
+              <ul>
+                <li class="fragment">Each output unit connects to <em>every</em> input pixel</li>
+                <li class="fragment">Number of parameters grows quickly with image size</li>
+                <li class="fragment">No notion of neighbors or locality</li>
+              </ul>
+            </div>
+            <div>
+              <strong>Convolutional Layer</strong>
+              <ul>
+                <li class="fragment">Each filter looks at a small patch (e.g., \(3\times3\)) at a time</li>
+                <li class="fragment">Same filter slides over the whole image (weight sharing)</li>
+                <li class="fragment">Output feature map answers: “Where does this pattern appear?”</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Convolution: Local Receptive Fields</h3>
+          <p class="small">A convolution layer learns filters \(K\) that are applied locally to the input image \(X\).</p>
+          <p class="small">\[
+            Y[i, j] = \sum_{u,v} K[u, v] \cdot X[i+u,\, j+v]
+          \]</p>
+          <ul>
+            <li class="fragment">Each output position \((i, j)\) “sees” only a small neighborhood of the input</li>
+            <li class="fragment">Stacking convolutions increases the <em>receptive field</em> (how much of the original image a unit depends on)</li>
+            <li class="fragment">Early layers: edges and simple shapes; deeper layers: object parts and concepts</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Diagram: Sliding Filter</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph conv2d {
+  rankdir=LR;
+  node [fontsize=11];
+
+  subgraph cluster_input {
+    label="Input (image)";
+    style=dashed;
+    img [label="28×28 pixels", shape=box];
+  }
+
+  subgraph cluster_kernel {
+    label="Filter (kernel)";
+    style=dashed;
+    k [label="3×3 weights", shape=box];
+  }
+
+  subgraph cluster_output {
+    label="Feature map";
+    style=dashed;
+    fmap [label="26×26 activations", shape=box];
+  }
+
+  img -> k [label="slide", fontsize=10];
+  k -> fmap [label="dot products", fontsize=10];
+}
+          </code></pre>
+          <p class="small">As the filter slides, it produces a feature map that is high where the pattern is present.</p>
+        </section>
+
+        <section>
+          <h3>Shapes in Conv Layers</h3>
+          <ul class="small">
+            <li class="fragment">Input: \((N, C_{\text{in}}, H, W)\) — batch, channels, height, width</li>
+            <li class="fragment">Conv2d with \(C_{\text{out}}\) filters, kernel \(K \times K\), stride \(s\), padding \(p\)</li>
+            <li class="fragment">Output height:
+              \[
+                H_{\text{out}} = \left\lfloor \frac{H + 2p - K}{s} \right\rfloor + 1
+              \]
+            </li>
+            <li class="fragment">Output shape: \((N, C_{\text{out}}, H_{\text{out}}, W_{\text{out}})\)</li>
+            <li class="fragment">“Same” padding keeps \(H_{\text{out}} \approx H\); “valid” padding lets it shrink</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Pooling: Downsampling Features</h3>
+          <ul>
+            <li class="fragment">Pooling reduces spatial size while keeping important information</li>
+            <li class="fragment"><strong>Max pooling:</strong> keeps the largest activation in each window (e.g., \(2\times2\))</li>
+            <li class="fragment">Adds some translation invariance (small shifts in the image do not change the pooled output much)</li>
+            <li class="fragment">Used after one or more conv layers to gradually reduce resolution and number of parameters</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Code: Basic Conv + Pool in PyTorch</h3>
+          <pre><code class="language-python">import torch.nn as nn
+
+conv_block = nn.Sequential(
+    nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5, padding=2),
+    nn.ReLU(),
+    nn.MaxPool2d(kernel_size=2, stride=2),
+)</code></pre>
+          <p class="small">This block takes a \(1 \times 28 \times 28\) image, extracts 6 feature maps, applies ReLU, then halves height and width via max pooling.</p>
+        </section>
+
+        <section>
+          <h3>LeNet: Classic CNN for Digits</h3>
+          <p class="small">LeNet-5 is one of the earliest successful CNNs for digit recognition.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph lenet {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  input  [label="Input\n1×32×32"];
+  c1     [label="Conv C1\n6×5×5 + ReLU\n→ 6×28×28"];
+  s2     [label="Pool S2\n2×2 max\n→ 6×14×14"];
+  c3     [label="Conv C3\n16×5×5 + ReLU\n→ 16×10×10"];
+  s4     [label="Pool S4\n2×2 max\n→ 16×5×5"];
+  f5     [label="FC F5\n120"];
+  f6     [label="FC F6\n84"];
+  out    [label="Output\n10 classes (softmax)"];
+
+  input -> c1 -> s2 -> c3 -> s4 -> f5 -> f6 -> out;
+}
+          </code></pre>
+          <p class="small">Modern CNNs (VGG, ResNet, etc.) follow the same pattern: conv + nonlinearity + pooling → fully connected classifier.</p>
+        </section>
+
+        <section>
+          <h3>Regularization: Overfitting in CNNs</h3>
+          <ul>
+            <li class="fragment">CNNs can easily memorize training images if the model is too large or data is limited</li>
+            <li class="fragment">Symptoms: training accuracy high, validation accuracy low and noisy</li>
+            <li class="fragment"><strong>Regularization</strong> methods reduce overfitting by limiting model capacity or adding noise</li>
+            <li class="fragment">Common tools in CNNs: weight decay (L2), Dropout, data augmentation (covered more in Lesson 4)</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Dropout: Turning Off Units</h3>
+          <p class="small">During training, Dropout randomly zeros out a fraction \(p\) of activations.</p>
+          <p class="small">\[
+            \tilde{h}_i =
+            \begin{cases}
+              0 & \text{with probability } p \\
+              \dfrac{h_i}{1 - p} & \text{with probability } 1 - p
+            \end{cases}
+          \]</p>
+          <ul>
+            <li class="fragment">\(h_i\) is the activation of unit \(i\) <em>before</em> dropout; \(\tilde{h}_i\) is the activation <em>after</em> dropout</li>
+            <li class="fragment">Forces the network not to rely on any single path or feature</li>
+            <li class="fragment">Behaves like training an ensemble of many “thinned” networks</li>
+            <li class="fragment">At inference time, Dropout is turned <strong>off</strong>; we use the full network without randomly dropping units</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Code: Dropout in PyTorch</h3>
+          <pre><code class="language-python">import torch.nn as nn
+
+classifier = nn.Sequential(
+    nn.Flatten(),
+    nn.Linear(16 * 5 * 5, 120),
+    nn.ReLU(),
+    nn.Dropout(p=0.5),
+    nn.Linear(120, 84),
+    nn.ReLU(),
+    nn.Linear(84, 10),
+)</code></pre>
+          <p class="small">Dropout is only active in <code>model.train()</code> mode. In <code>model.eval()</code>, all units are used.</p>
+        </section>
+
+        <section>
+          <h3>Normalization: BatchNorm (Intuition)</h3>
+          <p class="small">BatchNorm normalizes activations using mini-batch statistics, then rescales them with learnable parameters.</p>
+          <ul>
+            <li class="fragment">Intermediate activations can have very different scales across layers and batches</li>
+            <li class="fragment">BatchNorm normalizes per feature/channel so each batch has roughly zero mean and unit variance</li>
+            <li class="fragment">Learnable \(\gamma\) and \(\beta\) restore useful scales and offsets after normalization</li>
+            <li class="fragment">Helps stabilize training, allows higher learning rates, and can act as a mild regularizer</li>
+            <li class="fragment">Uses mini-batch statistics during training, running averages during inference</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>BatchNorm: Equations</h3>
+          <p class="small">Given a mini-batch \(\{x_1, \dots, x_m\}\) for one feature/channel:</p>
+          <p class="small">\[
+            \mu_B = \frac{1}{m} \sum_{i=1}^m x_i, \quad
+            \sigma_B^2 = \frac{1}{m} \sum_{i=1}^m (x_i - \mu_B)^2
+          \]</p>
+          <p class="small">\[
+            \hat{x}_i = \frac{x_i - \mu_B}{\sqrt{\sigma_B^2 + \varepsilon}}, \quad
+            y_i = \gamma \hat{x}_i + \beta
+          \]</p>
+          <ul class="small">
+            <li class="fragment">\(\mu_B\), \(\sigma_B^2\): batch mean and variance for this feature/channel</li>
+            <li class="fragment">\(\hat{x}_i\): normalized activation (zero mean, unit variance within the batch)</li>
+            <li class="fragment">\(y_i\): final activation after BatchNorm, passed to the next layer</li>
+            <li class="fragment">\(\gamma\), \(\beta\): learned scale and shift that let the layer choose a good range again</li>
+            <li class="fragment">\(\varepsilon\): small constant to avoid division by zero</li>
+            <li class="fragment">During inference, \(\mu_B\) and \(\sigma_B^2\) are replaced by running averages accumulated during training.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Code: Conv Block with BatchNorm</h3>
+          <pre><code class="language-python">conv_block = nn.Sequential(
+    nn.Conv2d(1, 32, kernel_size=3, padding=1),
+    nn.BatchNorm2d(32),
+    nn.ReLU(),
+    nn.MaxPool2d(2),
+)</code></pre>
+          <p class="small">BatchNorm keeps the distribution of activations more stable across batches, which often speeds up convergence.</p>
+        </section>
+
+        <section>
+          <h3>Putting It Together: Simple CNN for MNIST</h3>
+          <pre><code class="language-python">class SimpleCNN(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(1, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),   # 14×14
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.MaxPool2d(2),   # 7×7
+        )
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(128, 10),
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x</code></pre>
+          <p class="small">This structure (conv blocks → pooling → fully connected classifier) mirrors LeNet but with slightly modernized choices.</p>
+        </section>
+
+        <section>
+          <h3>Switch to Notebook: CNN on MNIST</h3>
+          <ul>
+            <li class="fragment">Now we will train a CNN end-to-end on MNIST in the companion notebook</li>
+            <li class="fragment">Open <code>notebooks/lesson3_Pytorch_MNIST_cnn.ipynb</code> to walk through:</li>
+            <li class="fragment">Loading MNIST, defining the CNN, training with Dropout/BatchNorm, evaluation, and inference on sample images</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Additional Resources</h3>
+          <ul class="small">
+            <li class="fragment"><a href="https://poloclub.github.io/cnn-explainer/" target="_blank">CNN Explainer</a> — interactive visual explanation of convolutions, feature maps, and pooling.</li>
+            <li class="fragment"><a href="https://medium.com/data-science/gentle-dive-into-math-behind-convolutional-neural-networks-79a07dd44cf9" target="_blank">Gentle dive into CNN math</a> — step-by-step visualization of the convolution operation.</li>
+            <li class="fragment"><a href="https://www.youtube.com/watch?v=UxIS_PoVoz8" target="_blank">LeNet visualization video</a> — walk-through of how LeNet processes digit images.</li>
+            <li class="fragment"><a href="https://adamharley.com/nn_vis/cnn/3d.html" target="_blank">3D LeNet visualization</a> — 3D view of activations through a CNN.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Homework</h3>
+          <ul class="small">
+            <li class="fragment">Experiment with different CNN architectures for MNIST: change number of filters, kernel sizes, or depth.</li>
+            <li class="fragment">Compare models with and without Dropout and BatchNorm. Plot training and validation curves and discuss overfitting.</li>
+            <li class="fragment">Visualize intermediate feature maps for a few test images to see what early and late layers are detecting.</li>
+            <li class="fragment">Try training on Fashion-MNIST with your best CNN and compare results to Lesson 2’s fully connected network.</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script>
+      Reveal.initialize({
+        width: 1280,
+        height: 720,
+        hash: true,
+        slideNumber: true,
+        transition: 'slide',
+        plugins: [RevealNotes, RevealHighlight]
+      });
+
+      (function () {
+        if (typeof Viz === 'undefined') {
+          return;
+        }
+        const viz = new Viz();
+        const renderGraphs = () => {
+          const blocks = document.querySelectorAll('code.language-dot[data-graphviz]');
+          blocks.forEach((code) => {
+            const dot = code.textContent;
+            viz.renderSVGElement(dot)
+              .then((svg) => {
+                const container = document.createElement('div');
+                container.className = 'graphviz';
+                container.appendChild(svg);
+                const pre = code.parentNode;
+                if (pre && pre.parentNode) {
+                  pre.parentNode.replaceChild(container, pre);
+                }
+              })
+              .catch((err) => {
+                console.error('Graphviz render error:', err);
+              });
+          });
+        };
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderGraphs);
+        } else {
+          renderGraphs();
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -40,15 +40,23 @@
 
 
 ***Lesson 3:***
-* The problem CNNs solve
-* Intuition of Convolution (interactive kernel visualization)
-* Filters, Strides, Pooling
-* LeNet visualization:
-https://www.youtube.com/watch?v=UxIS_PoVoz8
-https://adamharley.com/nn_vis/cnn/3d.html
-* CNN Architectures LeNet → VGG → ResNet
-* Regularization (Dropout), Normalization (BatchNorm)
+* Motivation for CNNs vs fully connected networks on image data
+* Convolutions, receptive fields, and pooling (shapes, stride, padding)
+* Regularization and normalization in CNNs (Dropout, BatchNorm) with PyTorch examples
+* LeNet-style architecture and a simple CNN for MNIST (`notebooks/lesson3_Pytorch_MNIST_cnn.ipynb`)
+
+Additional resources (used in Lesson 3 slides):
+* [CNN Explainer](https://poloclub.github.io/cnn-explainer/)
+* [Convolutional operation visualization](https://medium.com/data-science/gentle-dive-into-math-behind-convolutional-neural-networks-79a07dd44cf9)
+* [LeNet visualization video](https://www.youtube.com/watch?v=UxIS_PoVoz8)
+* [3D LeNet visualization](https://adamharley.com/nn_vis/cnn/3d.html)
+
+
+***Lesson 4:***
 * Data Augmentation (flip, rotate, color-jitter demos)
+* CNN Architectures LeNet → VGG → ResNet
+* [Convolutional Neural Network for Object Tracking](https://github.com/turhancan97/Convolutional-Neural-Network-for-Object-Tracking?tab=readme-ov-file#image-processing-techniques)
+* [FastAI convolutional neural network](https://github.com/fastai/course22p2/blob/master/nbs/07_convolutions.ipynb)
 
 **Topics:**
 * Intuition of Convolution (interactive kernel visualization)
@@ -130,22 +138,13 @@ Every 2 modules → **mini project** (e.g. “Build your own image classifier”
 
 ---
 
-Would you like me to:
-
-1. **Add estimated durations per module and per topic** (to fill the “TO BE ADDED” parts)?
-2. Or first, refine the **content depth** (what stays vs what gets simplified/removed)?
-
-We can do both, but let’s pick one to focus on next.
-
----
-
 ## 📽️ Slides (Reveal.js)
 
 - Quick start: from repo root run `python3 -m http.server` and visit `http://localhost:8000/slides/`
 - Open individual lessons from the index page:
   - `slides/lesson1.html` — Lesson 1: From Regression to Deep Learning (nonlinear 2D data, neurons, layers, activations, decision boundaries)
-  - `slides/lesson2.html`
-  - `slides/lesson3.html`
+  - `slides/lesson2.html` — Lesson 2: How Neural Networks Learn (activations, loss functions, optimizers, and MNIST training in PyTorch)
+  - `slides/lesson3.html` — Lesson 3: Convolutional Neural Networks (convolutions, pooling, Dropout/BatchNorm, and a CNN for MNIST)
   - `slides/lesson4.html`
 
 ---
