@@ -1,0 +1,57 @@
+/* Common styles for all PA Academy AI 2025 slide decks */
+
+/* Code block styling */
+.reveal section pre code {
+  font-size: 0.9em;
+  line-height: 1.35;
+}
+
+/* Small text utility */
+.small {
+  font-size: 0.8em;
+}
+
+/* Image row styling */
+.img-row img {
+  margin: 0.25rem 0.5rem;
+  border: 1px solid #eee;
+}
+
+/* Graphviz diagram styling */
+.graphviz svg {
+  max-width: 70%;
+  height: auto;
+  display: block;
+  margin: 0.2rem auto 0.3rem;
+}
+
+/* Activation plot styling */
+.activation-plot {
+  margin: 0.3rem 0 0.5rem;
+  text-align: center;
+}
+
+.activation-plot img {
+  max-width: 45%;
+  height: auto;
+}
+
+/* List spacing */
+.reveal section ul {
+  margin-bottom: 0.4rem;
+}
+
+/* Two-column layout */
+.two-column {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.two-column > div {
+  flex: 1 1 0;
+}
+
+/* Lesson-specific overrides can be added in individual HTML files */
+

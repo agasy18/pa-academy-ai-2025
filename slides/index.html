@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
     <style>
-      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
-      .small { font-size: 0.8em; }
+      /* Index-specific styles */
       .lesson-links ul { list-style: none; padding-left: 0; }
       .lesson-links li { margin: 0.4rem 0; }
       .lesson-links a { text-decoration: none; color: #0645AD; }
@@ -49,12 +49,12 @@
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="assets/slides-common.js"></script>
     <script>
-      Reveal.initialize({
-        hash: true,
-        slideNumber: true,
-        transition: 'slide',
-        plugins: [RevealNotes, RevealHighlight]
+      initializeSlides({
+        graphviz: false,
+        width: 1920,
+        height: 1080,
       });
     </script>
   </body>

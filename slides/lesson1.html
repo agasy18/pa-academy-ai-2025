@@ -7,13 +7,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
     <style>
-      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
-      .small { font-size: 0.8em; }
-      .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
-      .graphviz svg { max-width: 80%; height: auto; }
-      .activation-plot { margin: 0.3rem 0 0.5rem; }
-      .activation-plot img { max-width: 45%; height: auto; }
+      /* Lesson 1 specific overrides */
+      .graphviz svg { max-width: 80%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -340,44 +337,12 @@ plt.show()
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
     <script>
-      Reveal.initialize({
-        hash: true,
-        slideNumber: true,
-        transition: 'slide',
-        plugins: [RevealNotes, RevealHighlight]
+      initializeSlides({
+        width: 1536,
+        height: 864,
       });
-
-      (function () {
-        if (typeof Viz === 'undefined') {
-          return;
-        }
-        const viz = new Viz();
-        const renderGraphs = () => {
-          const blocks = document.querySelectorAll('code.language-dot[data-graphviz]');
-          blocks.forEach((code) => {
-            const dot = code.textContent;
-            viz.renderSVGElement(dot)
-              .then((svg) => {
-                const container = document.createElement('div');
-                container.className = 'graphviz';
-                container.appendChild(svg);
-                const pre = code.parentNode;
-                if (pre && pre.parentNode) {
-                  pre.parentNode.replaceChild(container, pre);
-                }
-              })
-              .catch((err) => {
-                console.error('Graphviz render error:', err);
-              });
-          });
-        };
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', renderGraphs);
-        } else {
-          renderGraphs();
-        }
-      })();
     </script>
   </body>
   </html>

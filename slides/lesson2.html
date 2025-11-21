@@ -7,15 +7,13 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
     <style>
-      .reveal section pre code { font-size: 0.9em; line-height: 1.35; }
-      .small { font-size: 0.8em; }
-      .reveal section ul { margin-bottom: 0.4rem; }
-      .img-row img { margin: 0.25rem 0.5rem; border: 1px solid #eee; }
-      .graphviz svg { max-width: 55%; height: auto; display: block; margin: 0.2rem auto 0.3rem; }
+      /* Lesson 2 specific overrides */
+      .graphviz svg { max-width: 55%; }
       .softmax-diagram .graphviz svg { max-width: 24%; }
-      .activation-plot { margin: 0.15rem 0 0.15rem; text-align: center; }
-      .activation-plot img { max-width: 32%; height: auto; }
+      .activation-plot { margin: 0.15rem 0 0.15rem; }
+      .activation-plot img { max-width: 32%; }
       .activation-plot + ul { margin-top: 0.2rem; }
       .loss-code pre { margin-top: 0.25rem; }
     </style>
@@ -505,46 +503,12 @@ probs = torch.softmax(logits, dim=1)  # optional: class probabilities for analys
     <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
     <script>
-      Reveal.initialize({
-        width: 1280,
-        height: 720,
-        hash: true,
-        slideNumber: true,
-        transition: 'slide',
-        plugins: [RevealNotes, RevealHighlight]
+      initializeSlides({
+        width: 1536,
+        height: 864,
       });
-
-      (function () {
-        if (typeof Viz === 'undefined') {
-          return;
-        }
-        const viz = new Viz();
-        const renderGraphs = () => {
-          const blocks = document.querySelectorAll('code.language-dot[data-graphviz]');
-          blocks.forEach((code) => {
-            const dot = code.textContent;
-            viz.renderSVGElement(dot)
-              .then((svg) => {
-                const container = document.createElement('div');
-                container.className = 'graphviz';
-                container.appendChild(svg);
-                const pre = code.parentNode;
-                if (pre && pre.parentNode) {
-                  pre.parentNode.replaceChild(container, pre);
-                }
-              })
-              .catch((err) => {
-                console.error('Graphviz render error:', err);
-              });
-          });
-        };
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', renderGraphs);
-        } else {
-          renderGraphs();
-        }
-      })();
     </script>
   </body>
 </html>
