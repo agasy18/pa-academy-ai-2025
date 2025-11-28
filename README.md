@@ -50,25 +50,17 @@ Additional resources (used in Lesson 3 slides):
 * [Convolutional operation visualization](https://medium.com/data-science/gentle-dive-into-math-behind-convolutional-neural-networks-79a07dd44cf9)
 * [LeNet visualization video](https://www.youtube.com/watch?v=UxIS_PoVoz8)
 * [3D LeNet visualization](https://adamharley.com/nn_vis/cnn/3d.html)
+* [FastAI convolutional neural network](https://github.com/fastai/course22p2/blob/master/nbs/07_convolutions.ipynb)
 
 
 ***Lesson 4:***
+* Regularization with weight decay
 * Data Augmentation (flip, rotate, color-jitter demos)
-* CNN Architectures LeNet → VGG → ResNet
+* CNN Architectures LeNet → AlexNet → VGG → Inception → ResNet
 * [Convolutional Neural Network for Object Tracking](https://github.com/turhancan97/Convolutional-Neural-Network-for-Object-Tracking?tab=readme-ov-file#image-processing-techniques)
-* [FastAI convolutional neural network](https://github.com/fastai/course22p2/blob/master/nbs/07_convolutions.ipynb)
 
-**Topics:**
-* Intuition of Convolution (interactive kernel visualization)
-* Filters, Strides, Pooling
-
-LeNet visualization:
-https://www.youtube.com/watch?v=UxIS_PoVoz8
-https://adamharley.com/nn_vis/cnn/3d.html
-* CNN Architectures LeNet → VGG → ResNet
-* Regularization (Dropout), Normalization (BatchNorm)
-* Data Augmentation (flip, rotate, color-jitter demos)
-
+*** Homework:***
+* Find similar images for provided image feature vector using cosine similarity
 
 ---
 
@@ -145,7 +137,7 @@ Every 2 modules → **mini project** (e.g. “Build your own image classifier”
   - `slides/lesson1.html` — Lesson 1: From Regression to Deep Learning (nonlinear 2D data, neurons, layers, activations, decision boundaries)
   - `slides/lesson2.html` — Lesson 2: How Neural Networks Learn (activations, loss functions, optimizers, and MNIST training in PyTorch)
   - `slides/lesson3.html` — Lesson 3: Convolutional Neural Networks (convolutions, pooling, Dropout/BatchNorm, and a CNN for MNIST)
-  - `slides/lesson4.html`
+  - `slides/lesson4.html` — Lesson 4: Data Augmentation & CNN Architectures (data augmentation, LeNet → AlexNet → VGG → Inception → ResNet, and object tracking context)
 
 ---
 
