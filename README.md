@@ -56,6 +56,7 @@ Additional resources (used in Lesson 3 slides):
 ***Lesson 4:***
 * Regularization with weight decay
 * Data Augmentation (flip, rotate, color-jitter demos)
+* Transfer learning with a pre-trained CNN (e.g. ResNet) using data augmentation (`notebooks/lesson4_data_augmentation.ipynb`)
 * CNN Architectures LeNet → AlexNet → VGG → Inception → ResNet
 * [Convolutional Neural Network for Object Tracking](https://github.com/turhancan97/Convolutional-Neural-Network-for-Object-Tracking?tab=readme-ov-file#image-processing-techniques)
 
@@ -137,7 +138,7 @@ Every 2 modules → **mini project** (e.g. “Build your own image classifier”
   - `slides/lesson1.html` — Lesson 1: From Regression to Deep Learning (nonlinear 2D data, neurons, layers, activations, decision boundaries)
   - `slides/lesson2.html` — Lesson 2: How Neural Networks Learn (activations, loss functions, optimizers, and MNIST training in PyTorch)
   - `slides/lesson3.html` — Lesson 3: Convolutional Neural Networks (convolutions, pooling, Dropout/BatchNorm, and a CNN for MNIST)
-  - `slides/lesson4.html` — Lesson 4: Data Augmentation & CNN Architectures (data augmentation, LeNet → AlexNet → VGG → Inception → ResNet, and object tracking context)
+  - `slides/lesson4.html` — Lesson 4: Data Augmentation, Transfer Learning & CNN Architectures (data augmentation, intro transfer learning with a pre-trained CNN, LeNet → AlexNet → VGG → Inception → ResNet, and object tracking context)
 
 ---
 

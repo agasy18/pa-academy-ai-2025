@@ -18,11 +18,38 @@
 }
 
 /* Graphviz diagram styling */
+.graphviz-wrapper {
+  text-align: center;
+}
+
+.graphviz {
+  position: relative;
+  display: inline-block;
+}
+
 .graphviz svg {
   max-width: 70%;
   height: auto;
   display: block;
   margin: 0.2rem auto 0.3rem;
+}
+
+.graphviz-fullscreen-link {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.35rem;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.6em;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  color: #0645AD;
+  text-decoration: none;
+}
+
+.graphviz-fullscreen-link:hover {
+  text-decoration: underline;
+  background: rgba(255, 255, 255, 1);
 }
 
 /* Activation plot styling */
@@ -54,4 +81,3 @@
 }
 
 /* Lesson-specific overrides can be added in individual HTML files */
-

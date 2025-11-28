@@ -29,9 +29,43 @@
             const container = global.document.createElement('div');
             container.className = 'graphviz';
             container.appendChild(svg);
+
+            const link = global.document.createElement('a');
+            link.href = '#';
+            link.className = 'graphviz-fullscreen-link';
+            link.innerHTML = '&#x26F6;'; // square with diagonal arrow
+            link.title = 'Open diagram fullscreen';
+            link.addEventListener('click', (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              const popup = global.open('', '_blank');
+              if (!popup || popup.closed) {
+                return;
+              }
+              const svgMarkup = svg.outerHTML;
+              popup.document.write(
+                '<!doctype html><html><head>' +
+                  '<meta charset="utf-8" />' +
+                  '<title>Diagram</title>' +
+                  '<style>' +
+                  'html, body { margin: 0; padding: 0; height: 100%; background: #ffffff; }' +
+                  'body { display: flex; align-items: center; justify-content: center; }' +
+                  'svg { max-width: 95vw; max-height: 95vh; width: auto; height: auto; }' +
+                  '</style>' +
+                '</head><body>' +
+                  svgMarkup +
+                '</body></html>',
+              );
+              popup.document.close();
+            });
+
+            const wrapper = global.document.createElement('div');
+            wrapper.className = 'graphviz-wrapper';
+            container.appendChild(link);
+            wrapper.appendChild(container);
             const pre = code.parentNode;
             if (pre && pre.parentNode) {
-              pre.parentNode.replaceChild(container, pre);
+              pre.parentNode.replaceChild(wrapper, pre);
             }
           })
           .catch((err) => {
@@ -84,4 +118,3 @@
 
   global.initializeSlides = initializeSlides;
 })(window);
-
