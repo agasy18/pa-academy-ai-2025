@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Model artifacts and checkpoints
+artifacts/
+*.pth
+*.pt
+*.ckpt
+
+# Data files
+data/
+*.pkl
+*.npz
+*.h5
+*.hdf5
+
+# Logs
+logs/
+*.log
+
+# Assets (generated figures)
+assets/
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# Partial downloads
+*.part_*
+*.tmp
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

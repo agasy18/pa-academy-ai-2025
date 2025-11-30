@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 5 — Variational Autoencoders & Latent PCA</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
+    <style>
+      .code-small pre code { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; align-items: flex-start; }
+      .two-column > div { flex: 1; }
+      .small { font-size: 0.9em; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 5: Variational Autoencoders & Latent PCA</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand how the convolutional VAE in <code>projects/face_autoencoder/src/model.py</code> encodes and decodes face images.</li>
+            <li class="fragment">Explain the reparameterization trick and the \(\beta\)-ELBO loss implemented in <code>VAELoss</code>.</li>
+            <li class="fragment">Collect latent representations, run PCA, and use the Gradio sliders in <code>app.py</code> to traverse interpretable directions.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Where the VAE Fits</h3>
+          <p class="small">We train a generative model that learns a smooth latent space of 64x64 RGB faces and supports interactive exploration.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph vae_flow {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  images   [label="Input faces\n(x) [64x64x3]"];
+  encoder  [label="Encoder CNN\nstrided conv blocks"];
+  heads    [label="Latent heads\nfc_mu & fc_logvar"];
+  sample   [label="Reparameterize\nmu + sigma * eps"];
+  decoder  [label="Decoder CNN\nConvTranspose + Tanh"];
+  recon    [label="Reconstruction\n~x"];
+  pca      [label="Latent PCA\nmetadata + sliders"];
+
+  images -> encoder -> heads -> sample -> decoder -> recon;
+  heads -> pca [style=dashed];
+  sample -> pca [style=dashed];
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">The encoder compresses spatial structure; latent heads model a Gaussian posterior; the decoder mirrors the encoder.</li>
+            <li class="fragment">Latent samples feed both reconstruction training and the PCA analysis used later in the app.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Encoder Anatomy</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Four `_conv_block` stages progressively downsample 64 -> 32 -> 16 -> 8 -> 4 while increasing channels (32 -> 256).</li>
+                <li class="fragment">Each block: `Conv2d(stride=2)` + `BatchNorm2d` + `LeakyReLU(0.2)` for stable feature scaling and nonlinearity.</li>
+                <li class="fragment">A dummy tensor at init time infers the flattened dimension so we can support arbitrary image sizes.</li>
+              </ul>
+            </div>
+            <div class="code-small">
+              <pre><code class="language-python">self.encoder_cnn = nn.Sequential(
+    _conv_block(image_channels, base_channels),
+    _conv_block(base_channels, base_channels * 2),
+    _conv_block(base_channels * 2, base_channels * 4),
+    _conv_block(base_channels * 4, base_channels * 8),
+)
+
+h = self.encoder_cnn(x)
+h = h.view(x.size(0), -1)
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Latent Gaussian + Reparameterization</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Two linear heads (`fc_mu`, `fc_logvar`) map flattened features to the mean and log-variance of \(q_\phi(z \mid x) = \mathcal{N}(\mu, \mathrm{diag}(\sigma^2))\).</li>
+                <li class="fragment">`reparameterize` keeps gradients flowing by sampling \(\epsilon \sim \mathcal{N}(0, I)\) and computing \(z = \mu + \sigma \odot \epsilon\).</li>
+                <li class="fragment">`logvar` is stored instead of \(\sigma\) to ensure positivity via `torch.exp(0.5 * logvar)`.</li>
+              </ul>
+            </div>
+            <div class="code-small">
+              <pre><code class="language-python">def encode(self, x):
+    h = self.encoder_cnn(x).view(x.size(0), -1)
+    mu = self.fc_mu(h)
+    logvar = self.fc_logvar(h)
+    return mu, logvar
+
+def reparameterize(self, mu, logvar):
+    std = torch.exp(0.5 * logvar)
+    eps = torch.randn_like(std)
+    return mu + eps * std
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Decoder & Reconstruction Quality</h3>
+          <ul>
+            <li class="fragment">`decoder_input` projects each latent vector back to the 4x4xC tensor inferred from the encoder.</li>
+            <li class="fragment">Three `_deconv_block` stages mirror the encoder by doubling spatial size via `ConvTranspose2d` strides.</li>
+            <li class="fragment">A final `ConvTranspose2d -> Tanh` predicts RGB pixels scaled to [-1, 1]; downstream utilities denormalize for visualization.</li>
+          </ul>
+          <pre class="code-small"><code class="language-python">def decode(self, z):
+    h = self.decoder_input(z)
+    h = h.view(z.size(0), self.enc_channels, self.enc_spatial, self.enc_spatial)
+    return self.decoder_cnn(h)
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>\(\beta\)-ELBO Loss</h3>
+          <ul class="small">
+            <li class="fragment">Objective: maximize the Evidence Lower Bound \(\mathcal{L} = \mathbb{E}[\log p_\theta(x \mid z)] - \beta \; \mathrm{KL}(q_\phi(z \mid x) \Vert p(z))\).</li>
+            <li class="fragment">`VAELoss` uses `F.mse_loss` for the reconstruction term (faces are continuous) and a closed-form KL between diagonal Gaussians.</li>
+            <li class="fragment">Tuning \(\beta\) trades sharp reconstructions (low \(\beta\)) for more disentangled latents (high \(\beta\)).</li>
+          </ul>
+          <pre class="code-small"><code class="language-python">recon_loss = F.mse_loss(output.reconstruction, target, reduction="mean")
+kl_div = -0.5 * torch.mean(1 + logvar - mu.pow(2) - logvar.exp())
+loss = recon_loss + beta * kl_div
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Training Loop Helpers (<code>training_utils.py</code>)</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">`seed_everything` keeps runs reproducible when comparing reconstructions or PCA components.</li>
+                <li class="fragment">`reconstruction_mse` wraps the VAE output tuple so FastAI logs the same metric as the PyTorch loss.</li>
+                <li class="fragment">`InlineReconstructionCallback` shows qualitative progress after every epoch using `plot_reconstruction_grid`.</li>
+              </ul>
+            </div>
+            <div class="code-small">
+              <pre><code class="language-python">def reconstruction_mse(output, target):
+    return F.mse_loss(output.reconstruction, target, reduction="mean")
+
+class InlineReconstructionCallback(Callback):
+    def after_epoch(self):
+        clear_output(wait=True)
+        plot_reconstruction_grid(
+            self.learn.model,
+            self.reference_batch,
+            n_samples=self.samples,
+            title=f"Epoch {self.epoch}",
+        )
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Collecting Latents & Running PCA</h3>
+          <ul class="small">
+            <li class="fragment">`collect_latents(learner)` switches the model to eval mode, concatenates `output.mu` for every batch in train + valid splits, and returns a NumPy array.</li>
+            <li class="fragment">We run PCA on those latent means (not the noisy samples) so each component corresponds to a deterministic direction.</li>
+            <li class="fragment">Artifacts saved alongside the trained weights include principal components, explained variance ratios, and the latent mean vector.</li>
+          </ul>
+          <pre class="code-small"><code class="language-python">from sklearn.decomposition import PCA
+
+latents = collect_latents(learn)  # shape: [N, latent_dim]
+pca = PCA(n_components=32)
+pca.fit(latents)
+np.savez(
+    artifacts_dir / "pca.npz",
+    components=pca.components_,
+    explained_variance_ratio=pca.explained_variance_ratio_,
+    latent_mean=latents.mean(axis=0),
+)
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>PCA-Controlled Generation (<code>app.py</code>)</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">`load_artifacts` pulls the trained `ConvVAE` checkpoint plus `pca.npz` metadata (components, variance, latent mean).</li>
+                <li class="fragment">`make_generator` adds slider coefficients to the latent mean and decodes the resulting vector on the selected device.</li>
+                <li class="fragment">`gr.Slider` labels expose each component's variance percentage so learners focus on the most expressive directions.</li>
+              </ul>
+            </div>
+            <div class="code-small">
+              <pre><code class="language-python">def make_generator(model, metadata):
+    device = next(model.parameters()).device
+    components = metadata["pca_components_matrix"]
+    latent_mean = metadata["latent_mean"]
+
+    def generate(*coeffs):
+        z = latent_mean.copy()
+        for coeff, component in zip(coeffs, components):
+            z += coeff * component
+        z_tensor = torch.from_numpy(z).float().unsqueeze(0).to(device)
+        with torch.no_grad():
+            decoded = model.decode(z_tensor)
+        return (denormalize(decoded.squeeze(0)).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+
+    return generate
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>From PCA Sliders Back to Faces</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph pca_app {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  sliders [label="Gradio sliders\ncoefficients for PCs"];
+  latent  [label="Latent mean +\ncoeff * component"];
+  decoder [label="ConvVAE.decode(z)"];
+  denorm  [label="denormalize()\n[-1,1] -> [0,255]"];
+  ui      [label="Image output\ninterpretable changes"];
+
+  sliders -> latent -> decoder -> denorm -> ui;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Because components are orthogonal, moving one slider mostly changes one interpretable attribute (lighting, pose, smile).</li>
+            <li class="fragment">Random button samples coefficients from \([-3, 3]\) to encourage broader exploration before fine-tuning individual sliders.</li>
+            <li class="fragment">Always keep coefficients moderate; very large magnitudes can leave the training manifold and produce artifacts.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>VAE vs Regular Autoencoder</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Regular Autoencoder</h4>
+              <ul>
+                <li class="fragment">Encoder: \(x \to z\) (deterministic)</li>
+                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
+                <li class="fragment">Latent space: discrete, no structure</li>
+                <li class="fragment">Problem: gaps in latent space → can't generate new samples</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Variational Autoencoder</h4>
+              <ul>
+                <li class="fragment">Encoder: \(x \to (\mu, \sigma)\) (probabilistic)</li>
+                <li class="fragment">Sample: \(z \sim \mathcal{N}(\mu, \sigma^2)\)</li>
+                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
+                <li class="fragment">Latent space: continuous, smooth, generative</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">VAEs learn a <em>distribution</em> over latents, enabling smooth interpolation and generation of new faces.</p>
+        </section>
+
+        <section>
+          <h3>Why Reparameterization Trick?</h3>
+          <ul class="small">
+            <li class="fragment">Problem: sampling \(z \sim \mathcal{N}(\mu, \sigma^2)\) is non-differentiable</li>
+            <li class="fragment">Direct sampling breaks backpropagation: gradients can't flow through random operations</li>
+            <li class="fragment">Solution: separate randomness from learnable parameters</li>
+          </ul>
+          <div class="two-column small">
+            <div>
+              <p class="fragment"><strong>Without reparameterization:</strong></p>
+              <pre class="code-small"><code class="language-python"># ❌ Can't backprop through this
+z = torch.normal(mu, std)
+# mu and std have no gradients!</code></pre>
+            </div>
+            <div>
+              <p class="fragment"><strong>With reparameterization:</strong></p>
+              <pre class="code-small"><code class="language-python"># ✅ Gradients flow through mu, std
+eps = torch.randn_like(std)  # fixed noise
+z = mu + eps * std
+# Both mu and std are differentiable!</code></pre>
+            </div>
+          </div>
+          <p class="small fragment">Key insight: \(\epsilon\) is sampled once and fixed; gradients flow through \(\mu\) and \(\sigma\).</p>
+        </section>
+
+        <section>
+          <h3>Understanding KL Divergence</h3>
+          <p class="small">The KL term regularizes the learned posterior \(q_\phi(z \mid x)\) to match the prior \(p(z) = \mathcal{N}(0, I)\).</p>
+          <p class="small">\[
+            \mathrm{KL}(q_\phi(z \mid x) \Vert p(z)) = \frac{1}{2} \sum_{i=1}^d \left( \sigma_i^2 + \mu_i^2 - 1 - \log \sigma_i^2 \right)
+          \]</p>
+          <ul class="small">
+            <li class="fragment">\(\sigma_i^2 + \mu_i^2 - 1\): penalizes large means and variances (pushes toward standard normal)</li>
+            <li class="fragment">\(-\log \sigma_i^2\): prevents collapse (keeps variance from going to zero)</li>
+            <li class="fragment">Without KL: encoder could map each \(x\) to a different region → no smooth latent space</li>
+            <li class="fragment">With KL: encoder learns to use a shared, structured latent space</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>\(\beta\)-VAE: Controlling Disentanglement</h3>
+          <p class="small">The \(\beta\) parameter in \(\mathcal{L} = \mathbb{E}[\log p_\theta(x \mid z)] - \beta \; \mathrm{KL}(q_\phi(z \mid x) \Vert p(z))\) controls the trade-off:</p>
+          <div class="two-column small">
+            <div>
+              <h4>Low \(\beta\) (e.g., 0.1-0.5)</h4>
+              <ul>
+                <li class="fragment">Emphasizes reconstruction quality</li>
+                <li class="fragment">Sharper, more detailed outputs</li>
+                <li class="fragment">Less structured latent space</li>
+                <li class="fragment">Latent dimensions may be correlated</li>
+              </ul>
+            </div>
+            <div>
+              <h4>High \(\beta\) (e.g., 2-10)</h4>
+              <ul>
+                <li class="fragment">Emphasizes latent regularization</li>
+                <li class="fragment">More disentangled features</li>
+                <li class="fragment">Smoother, more interpretable latents</li>
+                <li class="fragment">May sacrifice some reconstruction quality</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment"><strong>Standard VAE:</strong> \(\beta = 1.0\) (balanced). <strong>\(\beta\)-VAE:</strong> \(\beta > 1\) for better disentanglement.</p>
+        </section>
+
+        <section>
+          <h3>Reconstruction Loss: MSE vs Log(MSE) vs Perceptual</h3>
+          <div class="two-column small">
+            <div>
+              <h4>MSE Loss (Standard)</h4>
+              <ul>
+                <li class="fragment">Pixel-wise squared error: \(\|x - \hat{x}\|^2\)</li>
+                <li class="fragment">Simple, fast, differentiable</li>
+                <li class="fragment">Problem: averages out details → blurry reconstructions</li>
+                <li class="fragment">Large errors dominate gradients</li>
+              </ul>
+              <div class="fragment">
+                <img src="assets/mse_face.png" alt="Blurry face reconstruction from MSE loss" style="max-width: 100%; margin-top: 0.5em; border: 1px solid #ddd;" />
+                <p class="small" style="margin-top: 0.3em; font-style: italic;">Example: MSE loss produces blurry, averaged reconstructions</p>
+              </div>
+              <pre class="code-small fragment"><code class="language-python">recon_loss = F.mse_loss(
+    output.reconstruction, 
+    target
+)</code></pre>
+            </div>
+            <div>
+              <h4>Log(MSE) Loss (Alternative)</h4>
+              <ul>
+                <li class="fragment">\(\log(\|x - \hat{x}\|^2 + \epsilon)\)</li>
+                <li class="fragment">Reweights gradients: \(\frac{1}{\text{MSE}} \cdot \frac{\partial \text{MSE}}{\partial \theta}\)</li>
+                <li class="fragment">Large errors contribute less; small errors contribute more</li>
+                <li class="fragment">Often produces sharper results than standard MSE</li>
+                <li class="fragment"><strong>Valid alternative</strong> that sometimes outperforms MSE</li>
+              </ul>
+              <pre class="code-small fragment"><code class="language-python">mse = F.mse_loss(output.reconstruction, target)
+recon_loss = torch.log(mse + 1e-8)
+# Or: loss_func = VAELoss(beta=1.0, use_log_mse=True)
+</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Reconstruction Loss: Perceptual Loss</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Perceptual Loss (Enhanced)</h4>
+              <ul>
+                <li class="fragment">Feature-space error: \(\|f(x) - f(\hat{x})\|^2\)</li>
+                <li class="fragment">Uses pre-trained VGG features</li>
+                <li class="fragment">Better preserves facial structure and details</li>
+                <li class="fragment">Sharper, more realistic reconstructions</li>
+                <li class="fragment">Most computationally expensive option</li>
+              </ul>
+            </div>
+            <div>
+              <pre class="code-small fragment"><code class="language-python"># Compare VGG features instead
+recon_features = vgg(x)
+target_features = vgg(target)
+perceptual_loss = F.mse_loss(
+    recon_features, 
+    target_features
+)
+
+# Or use PerceptualVAELoss:
+loss_func = PerceptualVAELoss(
+    beta=1.0,
+    feature_layer='relu3_3'
+)
+</code></pre>
+              <p class="small fragment"><strong>Summary:</strong> MSE (standard) → Log(MSE) (often better) → Perceptual (best quality, slower)</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Perceptual Loss: VGG Feature Layers</h3>
+          <p class="small">Different VGG layers capture different levels of abstraction:</p>
+          <ul class="small">
+            <li class="fragment"><strong>relu1_2:</strong> Low-level (edges, colors) — too shallow for faces</li>
+            <li class="fragment"><strong>relu2_2:</strong> Mid-early (textures, patterns) — good detail preservation</li>
+            <li class="fragment"><strong>relu3_3:</strong> Mid-level (object parts, facial structures) — <em>recommended for 64-96px faces</em></li>
+            <li class="fragment"><strong>relu4_3:</strong> High-level (semantic features) — may lose spatial detail for small images</li>
+          </ul>
+          <pre class="code-small fragment"><code class="language-python"># In PerceptualVAELoss
+loss_func = PerceptualVAELoss(
+    beta=1.0,
+    perceptual_weight=1.0,
+    mse_weight=0.1,  # Optional: hybrid approach
+    feature_layer='relu3_3'  # Best for faces
+)</code></pre>
+          <p class="small fragment">For face images, <code>relu3_3</code> balances structure preservation with detail.</p>
+        </section>
+
+        <section>
+          <h3>Architecture Design Choices</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Encoder</h4>
+              <ul>
+                <li class="fragment"><strong>Strided convolutions:</strong> Efficient downsampling (no pooling needed)</li>
+                <li class="fragment"><strong>BatchNorm:</strong> Stabilizes training, allows higher learning rates</li>
+                <li class="fragment"><strong>LeakyReLU(0.2):</strong> Prevents dead neurons, common in GANs/VAEs</li>
+                <li class="fragment"><strong>Progressive channels:</strong> 32→64→128→256 captures hierarchical features</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Decoder</h4>
+              <ul>
+                <li class="fragment"><strong>ConvTranspose2d:</strong> Learns upsampling (better than interpolation)</li>
+                <li class="fragment"><strong>Mirror structure:</strong> Symmetric to encoder for balanced capacity</li>
+                <li class="fragment"><strong>Tanh output:</strong> Maps to [-1, 1] matching normalized inputs</li>
+                <li class="fragment"><strong>No final activation:</strong> Could use sigmoid for [0,1], but Tanh works well</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Training Considerations</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Learning rate:</strong> Start with 1e-3 to 2e-3; VAEs can be sensitive to LR</li>
+            <li class="fragment"><strong>Batch size:</strong> Larger batches (256+) help stabilize BatchNorm and gradients</li>
+            <li class="fragment"><strong>KL annealing:</strong> Start with \(\beta=0\), gradually increase to final value (helps early training)</li>
+            <li class="fragment"><strong>Latent dimension:</strong> Too small → information bottleneck; too large → underutilized capacity</li>
+            <li class="fragment"><strong>Monitoring:</strong> Watch both reconstruction loss (quality) and KL (regularization) separately</li>
+            <li class="fragment"><strong>Early stopping:</strong> Stop when validation loss plateaus; VAEs can overfit to training faces</li>
+          </ul>
+          <pre class="code-small fragment"><code class="language-python"># Example: KL annealing
+for epoch in range(epochs):
+    beta = min(1.0, epoch / 50)  # Ramp up over 50 epochs
+    loss_func.beta = beta
+    learn.fit_one_cycle(1, lr_max=lr)</code></pre>
+        </section>
+
+        <section>
+          <h3>Why PCA on Latent Space?</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Interpretability:</strong> PCA finds orthogonal directions of maximum variance</li>
+            <li class="fragment"><strong>Dimensionality reduction:</strong> First few components capture most variation</li>
+            <li class="fragment"><strong>Controllable generation:</strong> Each component often corresponds to a semantic attribute (smile, pose, lighting)</li>
+            <li class="fragment"><strong>Linear interpolation:</strong> Moving along a component is smooth and predictable</li>
+          </ul>
+          <div class="two-column small fragment">
+            <div>
+              <p><strong>PCA Components:</strong></p>
+              <ul>
+                <li>PC1: Often captures pose/angle</li>
+                <li>PC2: Often captures expression</li>
+                <li>PC3: Often captures lighting</li>
+                <li>PC4+: More subtle variations</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>Explained Variance:</strong></p>
+              <ul>
+                <li>First 8 components: ~60-80% variance</li>
+                <li>First 16 components: ~85-95% variance</li>
+                <li>Remaining: fine details</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Latent Space Properties</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Smoothness:</strong> Nearby points in latent space → similar faces (enabled by KL regularization)</li>
+            <li class="fragment"><strong>Completeness:</strong> Most of latent space decodes to valid faces (not just training examples)</li>
+            <li class="fragment"><strong>Interpolation:</strong> Linear paths between latents produce smooth face morphing</li>
+            <li class="fragment"><strong>Arithmetic:</strong> Can do "smiling face - neutral + angry" = new expression (if disentangled)</li>
+          </ul>
+          <pre class="code-small fragment"><code class="language-python"># Example: Interpolation
+z1 = model.encode(face1)[0]  # mu for face1
+z2 = model.encode(face2)[0]  # mu for face2
+
+for alpha in [0.0, 0.25, 0.5, 0.75, 1.0]:
+    z_interp = (1 - alpha) * z1 + alpha * z2
+    face_interp = model.decode(z_interp)
+    # Smooth morphing between faces!</code></pre>
+        </section>
+
+        <section>
+          <h3>Common Issues & Solutions</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Problem: Blurry Reconstructions</h4>
+              <ul>
+                <li class="fragment">Try perceptual loss instead of MSE</li>
+                <li class="fragment">Reduce \(\beta\) (less KL pressure)</li>
+                <li class="fragment">Increase model capacity (more channels)</li>
+                <li class="fragment">Check if latent dim is too small</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Problem: Posterior Collapse</h4>
+              <ul>
+                <li class="fragment">KL → 0, encoder ignores input</li>
+                <li class="fragment">Increase \(\beta\) gradually</li>
+                <li class="fragment">Use KL annealing</li>
+                <li class="fragment">Check decoder isn't too powerful</li>
+              </ul>
+            </div>
+          </div>
+          <div class="two-column small fragment">
+            <div>
+              <h4>Problem: Training Instability</h4>
+              <ul>
+                <li>Lower learning rate</li>
+                <li>Gradient clipping</li>
+                <li>Warm-up period</li>
+                <li>Check data normalization</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Problem: Poor Latent Structure</h4>
+              <ul>
+                <li>Increase \(\beta\) for disentanglement</li>
+                <li>Use \(\beta\)-VAE (\(\beta > 1\))</li>
+                <li>Train longer</li>
+                <li>Check KL term is active</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Next Steps</h3>
+          <ul>
+            <li class="fragment">Reproduce the training pipeline in <code>projects/face_autoencoder/face_autoencoder_training.ipynb</code> and compare \(\beta\) values.</li>
+            <li class="fragment">Experiment with different latent dimensions or `base_channels`, and observe how PCA variance ratios change.</li>
+            <li class="fragment">Try <code>PerceptualVAELoss</code> instead of <code>VAELoss</code> and compare reconstruction quality.</li>
+            <li class="fragment">Extend the Gradio app with preset buttons (e.g., "add smile", "turn head") by saving curated coefficient vectors.</li>
+            <li class="fragment">Implement latent interpolation: encode two faces, interpolate in latent space, decode to see morphing.</li>
+            <li class="fragment">Optional: try ICA or t-SNE on the collected latents to contrast with PCA's linear assumptions.</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
+    <script>
+      initializeSlides({
+        width: 1536,
+        height: 864,
+      });
+    </script>
+  </body>
+</html>

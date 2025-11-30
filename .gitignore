@@ -27,3 +27,4 @@ Temporary Items
 .apdisk
 tutorials/data/
 venv/
+projects/__pycache__/*
