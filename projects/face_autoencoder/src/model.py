@@ -274,6 +274,155 @@ class PerceptualVAELoss(nn.Module):
         return recon_loss + self.beta * kl_div
 
 
+class HybridVAELoss(nn.Module):
+    """Combined VAE loss using log(MSE) + perceptual loss + TV loss (recommended default).
+    
+    This loss combines the benefits of:
+    - Log(MSE): Reweights gradients to focus on small errors, often produces sharper results
+    - Perceptual loss: Preserves facial structure and details in feature space
+    - TV loss: Removes artifacts (checkerboard patterns, noise) by penalizing high-frequency variations
+    
+    Architecture:
+        * Reconstruction: log(MSE) + perceptual loss (VGG features) + TV loss
+        * Regularization: KL divergence (same as standard VAE)
+        * Total: recon_loss + beta * kl_div
+    
+    Args:
+        beta: Weight for KL divergence term (higher = more regularization)
+        log_mse_weight: Weight for log(MSE) component (default: 1.0)
+        perceptual_weight: Weight for perceptual loss component (default: 1.0)
+        tv_weight: Weight for Total Variation loss to reduce artifacts (default: 0.1)
+        feature_layer: Which VGG layer to use for features (default: 'relu3_3')
+    """
+
+    def __init__(
+        self,
+        beta: float = 1.0,
+        log_mse_weight: float = 1.0,
+        perceptual_weight: float = 1.0,
+        tv_weight: float = 0.1,
+        feature_layer: str = "relu3_3",
+    ) -> None:
+        super().__init__()
+        self.beta = beta
+        self.log_mse_weight = log_mse_weight
+        self.perceptual_weight = perceptual_weight
+        self.tv_weight = tv_weight
+
+        # Load pre-trained VGG16 and extract feature layers
+        try:
+            from torchvision.models import vgg16, VGG16_Weights
+
+            vgg = vgg16(weights=VGG16_Weights.IMAGENET1K_V1).features
+            vgg.eval()  # Freeze VGG weights
+            for param in vgg.parameters():
+                param.requires_grad = False
+
+            # Map layer names to indices
+            layer_map = {
+                "relu1_2": 3,
+                "relu2_2": 8,
+                "relu3_3": 15,
+                "relu4_3": 22,
+            }
+            if feature_layer not in layer_map:
+                raise ValueError(
+                    f"feature_layer must be one of {list(layer_map.keys())}"
+                )
+
+            # Extract layers up to the desired feature layer
+            self.feature_extractor = nn.Sequential(
+                *list(vgg.children())[: layer_map[feature_layer] + 1]
+            )
+            
+            # ImageNet normalization constants (VGG was trained with these)
+            self.register_buffer(
+                'mean',
+                torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+            )
+            self.register_buffer(
+                'std',
+                torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+            )
+        except ImportError:
+            raise ImportError(
+                "torchvision is required for HybridVAELoss. "
+                "Install with: pip install torchvision"
+            )
+
+    def _extract_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Extract VGG features from input images.
+        
+        Args:
+            x: Input tensor in range [-1, 1] (from Tanh output)
+        """
+        # Step 1: Convert from [-1, 1] to [0, 1]
+        x_normalized = (x + 1.0) / 2.0
+        x_normalized = x_normalized.clamp(0.0, 1.0)
+        
+        # Step 2: Apply ImageNet normalization (critical for VGG!)
+        x_imagenet = (x_normalized - self.mean) / self.std
+        
+        # Step 3: Extract features
+        return self.feature_extractor(x_imagenet)
+
+    def _total_variation_loss(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute Total Variation loss to reduce artifacts.
+        
+        TV loss penalizes high-frequency variations between neighboring pixels,
+        which helps remove checkerboard artifacts and noise common in ConvTranspose layers.
+        
+        Args:
+            x: Image tensor of shape (B, C, H, W)
+        
+        Returns:
+            Scalar TV loss value
+        """
+        batch_size = x.size(0)
+        
+        # Compute differences between neighboring pixels
+        # Horizontal differences: x[:, :, :, 1:] - x[:, :, :, :-1]
+        tv_h = torch.pow(x[:, :, :, 1:] - x[:, :, :, :-1], 2).sum()
+        
+        # Vertical differences: x[:, :, 1:, :] - x[:, :, :-1, :]
+        tv_w = torch.pow(x[:, :, 1:, :] - x[:, :, :-1, :], 2).sum()
+        
+        # Average over batch and normalize
+        tv_loss = (tv_h + tv_w) / batch_size
+        return tv_loss
+
+    def forward(self, output: VAEOutput, target: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+        # Log(MSE) loss: reweights gradients, focuses on small errors
+        mse = F.mse_loss(output.reconstruction, target, reduction="mean")
+        log_mse_loss = torch.log(mse + 1e-8)
+        
+        # Perceptual loss: feature-space similarity
+        recon_features = self._extract_features(output.reconstruction)
+        target_features = self._extract_features(target)
+        perceptual_loss = F.mse_loss(
+            recon_features, target_features, reduction="mean"
+        )
+        
+        # Total Variation loss: reduces artifacts (checkerboard patterns, noise)
+        tv_loss = (
+            self._total_variation_loss(output.reconstruction)
+            if self.tv_weight > 0
+            else torch.tensor(0.0, device=target.device)
+        )
+
+        # KL divergence (same as standard VAE)
+        kl_div = -0.5 * torch.mean(
+            1 + output.logvar - output.mu.pow(2) - output.logvar.exp()
+        )
+
+        recon_loss = (
+            self.log_mse_weight * log_mse_loss + 
+            self.perceptual_weight * perceptual_loss +
+            self.tv_weight * tv_loss
+        )
+        return recon_loss + self.beta * kl_div
+
+
 class ReconstructionMSE(nn.Module):
     """Metric: mean squared error between reconstructions and inputs."""
 
