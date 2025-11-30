@@ -54,12 +54,12 @@ class InlineReconstructionCallback(Callback):
         self.samples = samples
 
     def after_epoch(self) -> None:
-        clear_output(wait=True)
-        epoch_idx = getattr(self, "epoch", None)
-        title = f"Epoch {epoch_idx}" if epoch_idx is not None else "Epoch"
-        plot_reconstruction_grid(
-            self.learn.model,
-            self.reference_batch,
-            n_samples=min(self.samples, self.reference_batch.size(0)),
-            title=title,
-        )
+        if self.epoch % 10 == 0:
+            epoch_idx = getattr(self, "epoch", None)
+            title = f"Epoch {epoch_idx}" if epoch_idx is not None else "Epoch"
+            plot_reconstruction_grid(
+                self.learn.model,
+                self.reference_batch,
+                n_samples=min(self.samples, self.reference_batch.size(0)),
+                title=title,
+            )
