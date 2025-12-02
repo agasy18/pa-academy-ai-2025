@@ -48,12 +48,31 @@ def _latest_metadata() -> Path:
     )
 
 
+def _resolve_artifact_path(artifact_path: str, metadata_path: Path) -> Path:
+    """Resolve artifact path relative to ARTIFACT_DIR.
+    
+    Args:
+        artifact_path: Path from metadata (can be relative or absolute)
+        metadata_path: Path to the metadata.json file
+        
+    Returns:
+        Resolved absolute Path to the artifact
+    """
+    path = Path(artifact_path)
+    # If already absolute, return as-is
+    if path.is_absolute():
+        return path
+    # Otherwise, resolve relative to ARTIFACT_DIR
+    return (ARTIFACT_DIR / path).resolve()
+
+
 def load_artifacts(metadata_path: Path | None = None) -> tuple[ConvVAE, dict]:
     metadata_path = metadata_path or _latest_metadata()
     metadata = json.loads(metadata_path.read_text())
 
-    model_path = Path(metadata["model_path"])
-    pca_path = Path(metadata["pca_path"])
+    # Resolve paths (handles both absolute and relative paths)
+    model_path = _resolve_artifact_path(metadata["model_path"], metadata_path)
+    pca_path = _resolve_artifact_path(metadata["pca_path"], metadata_path)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ConvVAE(
@@ -111,7 +130,7 @@ def launch(metadata_path: str | None = None) -> None:
     for _, path in available_runs:
         try:
             metadata = json.loads(path.read_text())
-            pca_path = Path(metadata["pca_path"])
+            pca_path = _resolve_artifact_path(metadata["pca_path"], path)
             if pca_path.exists():
                 pca_data = np.load(pca_path)
                 num_comp = len(pca_data["explained_variance_ratio"])
