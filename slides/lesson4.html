@@ -329,6 +329,47 @@ digraph inception_block {
         </section>
 
         <section>
+          <h3>xResNet: Inception-Inspired CNN</h3>
+          <ul class="small">
+            <li class="fragment">xResNet variants combine <strong>residual connections</strong> with Inception-style improvements for efficiency.</li>
+            <li class="fragment"><strong>Depthwise separable convolutions:</strong> factor a standard conv into cheaper steps (per-channel spatial conv + 1×1 mixing) to reduce parameters and FLOPs.</li>
+            <li class="fragment"><strong>Batch normalization + ReLU:</strong> stabilize training and allow deeper networks.</li>
+            <li class="fragment"><strong>Global average pooling:</strong> replace large fully-connected layers with a compact pooling + small classifier head.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Depthwise Separable Convolutions</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Standard conv:</strong> every filter looks at <em>all</em> input channels at once (expensive: \(k \times k \times C_{in} \times C_{out}\)).</li>
+            <li class="fragment"><strong>Depthwise step:</strong> apply one \(k \times k\) filter per input channel (no channel mixing yet).</li>
+            <li class="fragment"><strong>Pointwise step:</strong> a cheap \(1 \times 1\) conv mixes channels to get the desired \(C_{out}\).</li>
+            <li class="fragment">Total cost is much lower, so we can build deeper or wider CNNs with similar compute and better accuracy.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Depthwise Separable Conv: xResNet18 Block</h3>
+          <p class="small">xResNet18-style block: depthwise + pointwise conv inside a residual (skip) connection.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph depthwise_sep_conv {
+  rankdir=LR;
+  node [fontsize=10, shape=box, style=rounded];
+
+  input     [label="input\nfrom previous block"];
+  depthwise [label="depthwise conv\nk×k per channel"];
+  pointwise [label="pointwise conv\n1×1 across channels"];
+  skip      [label="skip / identity\n(optional 1×1 conv)"];
+  add       [label="add\n(residual + conv output)"];
+  output    [label="output\nto next block"];
+
+  input -> depthwise -> pointwise -> add -> output;
+  input -> skip -> add;
+}
+          </code></pre>
+        </section>
+
+        <section>
           <h3>Transfer Learning with CNNs</h3>
           <ul>
             <li class="fragment">Modern practice: start from a CNN pre-trained on a large dataset (e.g., ImageNet)</li>
@@ -339,12 +380,12 @@ digraph inception_block {
         </section>
 
         <section>
-          <h3>CNNs for Object Tracking</h3>
-          <ul>
-            <li class="fragment">Object tracking: follow a target across video frames (e.g., a car or person)</li>
-            <li class="fragment">Typical pipeline: CNN features → predict new bounding box / similarity to target template</li>
-            <li class="fragment">Augmentation is especially important (scale changes, motion blur, occlusions)</li>
-            <li class="fragment">Example project: <a href="https://github.com/turhancan97/Convolutional-Neural-Network-for-Object-Tracking" target="_blank">CNN for Object Tracking (GitHub)</a></li>
+          <h3>Transfer Learning with xResNet18</h3>
+          <ul class="small">
+            <li class="fragment">Use a pretrained <code>xresnet18</code> backbone instead of training all weights from scratch on CIFAR-10.</li>
+            <li class="fragment"><strong>Phase 1 (frozen):</strong> freeze early layers and train only the new classification head for a few epochs.</li>
+            <li class="fragment"><strong>Phase 2 (fine-tune):</strong> unfreeze more layers and train with a smaller learning rate to gently adapt pretrained features.</li>
+            <li class="fragment">Helps small or medium-sized datasets achieve higher accuracy and faster convergence with less overfitting.</li>
           </ul>
         </section>
 
@@ -359,12 +400,53 @@ digraph inception_block {
         </section>
 
         <section>
+          <h3>Image Feature Vectors</h3>
+          <ul class="small">
+            <li class="fragment">A <strong>feature vector</strong> is a numeric representation of an image: a 1D vector \([f_1, f_2, \dots, f_d]\).</li>
+            <li class="fragment">A pretrained CNN (e.g., <code>xresnet18</code>) maps each image to a point in a high-dimensional space (e.g., 512-D).</li>
+            <li class="fragment">Nearby points correspond to visually or semantically similar images (e.g., similar objects, colors, textures).</li>
+            <li class="fragment">We can store these vectors and compare them instead of comparing raw pixels.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Cosine Similarity for Image Search</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Cosine similarity</strong> measures the angle between two feature vectors \(u\) and \(v\): \(\cos(\theta) = \frac{u \cdot v}{\|u\|\|v\|}\).</li>
+            <li class="fragment">Values are in \([-1, 1]\); higher values (closer to 1) mean more similar direction in feature space.</li>
+            <li class="fragment">For image retrieval: compute the feature vector of a query image and rank dataset images by cosine similarity.</li>
+            <li class="fragment">This is the core idea behind many “find similar images” and recommendation systems.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Evaluating Similarity Search</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Accuracy:</strong> fraction of predictions that are correct, \(\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}\).</li>
+            <li class="fragment"><strong>Precision:</strong> of the images you retrieved as “similar”, what fraction are actually relevant? \(\text{Precision} = \frac{TP}{TP + FP}\).</li>
+            <li class="fragment"><strong>Recall:</strong> of all relevant images in the dataset, what fraction did your system retrieve? \(\text{Recall} = \frac{TP}{TP + FN}\).</li>
+            <li class="fragment">For each backbone (e.g., ResNet18 vs xResNet18), compute these metrics on a small labeled subset to compare retrieval quality.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Check Your Understanding</h3>
+          <ul class="small">
+            <li class="fragment">Why does data augmentation usually improve generalization for CNNs trained on small image datasets?</li>
+            <li class="fragment">How do depthwise separable convolutions reduce computation compared to a standard convolution?</li>
+            <li class="fragment">What does a high cosine similarity between two image feature vectors tell you about the underlying images?</li>
+            <li class="fragment">Why can transfer learning with a pretrained backbone outperform training the same architecture from scratch on CIFAR-10?</li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Homework</h3>
           <ul class="small">
-            <li class="fragment">Implement and compare different augmentation strategies (none vs flips vs flips+rotations vs color jitter) on MNIST or Fashion-MNIST.</li>
-            <li class="fragment">Train at least two CNN architectures (e.g., baseline from Lesson 3 vs a deeper VGG-style or residual model) and compare validation performance.</li>
-            <li class="fragment">Plot training and validation curves for each setup; discuss how augmentation and architecture depth affected overfitting.</li>
-            <li class="fragment">Optional: explore the object tracking repository linked in the README and identify where CNN features are used.</li>
+            <li class="fragment">Build a small Gradio app that takes a custom input image (file upload) and returns the most similar images from a reference set.</li>
+            <li class="fragment">Use a pretrained CNN backbone (e.g., <code>xresnet18</code>) to extract a feature vector for each image.</li>
+            <li class="fragment">Compute cosine similarity between the query feature vector and all reference features, and display the top-\(k\) matches with similarity scores.</li>
+            <li class="fragment">Optionally, compare at least two different backbones (e.g., ResNet18 vs xResNet18) and report precision, recall, and accuracy on a small labeled evaluation set.</li>
+            <li class="fragment">Document your design choices (feature extractor, reference dataset, normalization) and briefly discuss limitations of this approach.</li>
           </ul>
         </section>
 
