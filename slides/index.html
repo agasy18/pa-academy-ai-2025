@@ -3,67 +3,243 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PA Academy AI 2025 — Slides</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
-    <link rel="stylesheet" href="assets/slides-common.css">
+    <title>PA Academy AI 2025 — Course Syllabus</title>
     <style>
-      /* Index-specific styles */
-      .lesson-links ul { list-style: none; padding-left: 0; }
-      .lesson-links li { margin: 0.4rem 0; }
-      .lesson-links a { text-decoration: none; color: #0645AD; }
-      .lesson-links a:hover { text-decoration: underline; }
+      :root {
+        --primary-color: #0645AD;
+        --bg-color: #f9f9f9;
+        --card-bg: #ffffff;
+        --text-color: #333;
+        --secondary-text: #666;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        color: var(--text-color);
+        background-color: var(--bg-color);
+        margin: 0;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 3rem;
+        padding: 2rem 0;
+        border-bottom: 1px solid #eee;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        color: #111;
+      }
+
+      h2 {
+        font-weight: normal;
+        color: var(--secondary-text);
+        margin-top: 0.5rem;
+      }
+
+      .lesson-card {
+        background: var(--card-bg);
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        border: 1px solid #e1e1e1;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .lesson-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      }
+
+      .lesson-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        border-bottom: 2px solid #f0f0f0;
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+      }
+
+      .lesson-title {
+        font-size: 1.5rem;
+        margin: 0;
+      }
+
+      .lesson-title a {
+        text-decoration: none;
+        color: var(--primary-color);
+        font-weight: 600;
+      }
+
+      .lesson-title a:hover {
+        text-decoration: underline;
+      }
+
+      .lesson-topics {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 0.5rem 2rem;
+      }
+
+      .lesson-topics li {
+        position: relative;
+        padding-left: 1.2rem;
+        color: var(--secondary-text);
+      }
+
+      .lesson-topics li::before {
+        content: "•";
+        position: absolute;
+        left: 0;
+        color: var(--primary-color);
+      }
+
+      footer {
+        text-align: center;
+        margin-top: 4rem;
+        color: var(--secondary-text);
+        font-size: 0.9rem;
+      }
+
+      a {
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+      
+      a:hover {
+        text-decoration: underline;
+      }
+
+      @media (max-width: 600px) {
+        .lesson-header {
+          flex-direction: column;
+        }
+        .lesson-topics {
+          grid-template-columns: 1fr;
+        }
+      }
     </style>
   </head>
   <body>
-    <div class="reveal">
-      <div class="slides">
+    <div class="container">
+      <header>
+        <h1>Picsart Academy</h1>
+        <h2>Deep Learning 2025 — Course Syllabus</h2>
+        <p>A practical introduction to Deep Learning with PyTorch, from basic neurons to Variational Autoencoders.</p>
+      </header>
 
-        <section>
-          <h2>Picsart Academy</h2>
-          <h3>Deep Learning 2025 — Slides</h3>
-          <p class="small">Use the links below to open each lesson deck.</p>
-          <div class="lesson-links">
-            <ul>
-              <li>
-                <strong><a href="lesson1.html">Lesson 1 — From Regression to Deep Learning</a></strong>
-                <span class="small">– nonlinear 2D data, neurons, layers, activations, and decision boundaries</span>
-              </li>
-              <li>
-                <strong><a href="lesson2.html">Lesson 2 — How Neural Networks Learn</a></strong>
-                <span class="small">– activations, loss functions, optimizers, and MNIST training in PyTorch</span>
-              </li>
-              <li>
-                <strong><a href="lesson3.html">Lesson 3 — Convolutional Neural Networks</a></strong>
-                <span class="small">– CNN intuition, LeNet-style architectures, Dropout/BatchNorm, and a CNN for MNIST in PyTorch</span>
-              </li>
-              <li>
-                <strong><a href="lesson4.html">Lesson 4 — Data Augmentation & CNN Architectures</a></strong>
-                <span class="small">– data augmentation for vision models and an overview of key CNN architectures (LeNet → AlexNet → VGG → Inception → ResNet)</span>
-              </li>
-              <li>
-                <strong><a href="lesson5.html">Lesson 5 — Variational Autoencoders & Latent PCA</a></strong>
-                <span class="small">– convolutional VAEs for faces, \(\beta\)-ELBO training, latent PCA, and interactive Gradio exploration</span>
-              </li>
-            </ul>
-          </div>
-          <p class="small">Repo: <a href="https://github.com/agasy18/pa-academy-ai-2025">https://github.com/agasy18/pa-academy-ai-2025</a></p>
-        </section>
-
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <h3 class="lesson-title"><a href="lesson1.html">Lesson 1: From Regression to Deep Learning</a></h3>
+        </div>
+        <ul class="lesson-topics">
+          <li>Why Regression Isn’t Enough</li>
+          <li>Single Neuron & Bias Intuition</li>
+          <li>ReLU & Sigmoid Activations</li>
+          <li>Two-Layer Networks & Forward Pass</li>
+          <li>Interactive Demo (TF Playground)</li>
+          <li>Hands-on: Making a 2D Dataset</li>
+          <li>Training & Evaluating in PyTorch</li>
+          <li>Visualizing Decision Regions</li>
+        </ul>
       </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
-    <script src="assets/slides-common.js"></script>
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <h3 class="lesson-title"><a href="lesson2.html">Lesson 2: How Neural Networks Learn</a></h3>
+        </div>
+        <ul class="lesson-topics">
+          <li>Activations in Practice (ReLU, GELU, Softmax)</li>
+          <li>Loss Functions (MSE, Cross-Entropy)</li>
+          <li>Backpropagation & Gradient Descent</li>
+          <li>Optimizers: SGD with Momentum vs. Adam</li>
+          <li>Mini-Batch Training</li>
+          <li>Learning Rate Intuition</li>
+          <li>Training Curves & Debugging</li>
+          <li>Hands-on: Training on MNIST</li>
+        </ul>
+      </div>
+
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <h3 class="lesson-title"><a href="lesson3.html">Lesson 3: Convolutional Neural Networks</a></h3>
+        </div>
+        <ul class="lesson-topics">
+          <li>From Dense to Convolutional Layers</li>
+          <li>Convolution: Local Receptive Fields</li>
+          <li>Pooling & Downsampling</li>
+          <li>LeNet Architecture</li>
+          <li>Regularization: Dropout</li>
+          <li>Normalization: BatchNorm Intuition</li>
+          <li>Building a CNN in PyTorch</li>
+          <li>CNN Training on MNIST</li>
+        </ul>
+      </div>
+
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <h3 class="lesson-title"><a href="lesson4.html">Lesson 4: Data Augmentation & CNN Architectures</a></h3>
+        </div>
+        <ul class="lesson-topics">
+          <li>Data Augmentation Pipeline</li>
+          <li>Using <code>torchvision.transforms</code></li>
+          <li>Key Architectures: LeNet → AlexNet</li>
+          <li>VGG & Inception Modules</li>
+          <li>ResNet: Residual Connections</li>
+          <li>Depthwise Separable Convolutions</li>
+          <li>Transfer Learning</li>
+          <li>Image Search with Cosine Similarity</li>
+        </ul>
+      </div>
+
+      <div class="lesson-card">
+        <div class="lesson-header">
+          <h3 class="lesson-title"><a href="lesson5.html">Lesson 5: Variational Autoencoders & Latent PCA</a></h3>
+        </div>
+        <ul class="lesson-topics">
+          <li>Autoencoder Architecture (Encoder/Decoder)</li>
+          <li>Latent Space & Reparameterization Trick</li>
+          <li>\(\beta\)-ELBO Loss Function</li>
+          <li>KL Divergence Intuition</li>
+          <li>Latent PCA for Controlled Generation</li>
+          <li>Perceptual Loss vs. MSE</li>
+          <li>\(\beta\)-VAE & Disentanglement</li>
+          <li>Interactive Face Generation</li>
+        </ul>
+      </div>
+
+      <footer>
+        <p>Course Repository: <a href="https://github.com/agasy18/pa-academy-ai-2025">https://github.com/agasy18/pa-academy-ai-2025</a></p>
+      </footer>
+    </div>
+    
+    <!-- MathJax for rendering inline math in topics if needed -->
     <script>
-      initializeSlides({
-        graphviz: false,
-        width: 1920,
-        height: 1080,
-      });
+      window.MathJax = {
+        tex: {
+          inlineMath: [['\\(', '\\)']]
+        },
+        svg: {
+          fontCache: 'global'
+        }
+      };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+      src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
   </body>
-  </html>
+</html>

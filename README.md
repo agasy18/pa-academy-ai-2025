@@ -55,31 +55,39 @@ Additional resources (used in Lesson 3 slides):
 
 ***Lesson 4:***
 * Regularization with weight decay
-* Data Augmentation (flip, rotate, color-jitter demos)
-* Transfer learning with a pre-trained CNN (e.g. ResNet) using data augmentation (`notebooks/lesson4_data_augmentation.ipynb`)
-* CNN Architectures LeNet → AlexNet → VGG → Inception → ResNet
-* [Convolutional Neural Network for Object Tracking](https://github.com/turhancan97/Convolutional-Neural-Network-for-Object-Tracking?tab=readme-ov-file#image-processing-techniques)
+* Data augmentation (flip, rotate, color-jitter, geometric warps) and its effect on overfitting
+* Transfer learning with a pre-trained CNN backbone (e.g., xResNet18/ResNet) using data augmentation (`notebooks/lesson4_data_augmentation.ipynb`)
+* CNN architectures: LeNet → AlexNet → VGG → Inception → ResNet → xResNet
+* Depthwise separable convolutions and residual blocks in modern CNNs
+* Image feature vectors, cosine similarity, and evaluation metrics (accuracy, precision, recall) for similarity search
 
-*** Homework:***
-* Find similar images for provided image feature vector using cosine similarity
+
+***Lesson 4 Homework:***
+* Build a small Gradio app that takes a custom input image (file upload) and returns the most similar images from a reference set.
+* Use a pretrained CNN backbone (e.g., xResNet18) to extract a feature vector for each image.
+* Compute cosine similarity between the query feature vector and all reference features, and display the top-k matches with similarity scores.
+* Optionally, compare at least two different backbones (e.g., ResNet18 vs xResNet18) and report precision, recall, and accuracy on a small labeled evaluation set.
+* Briefly document your design choices (feature extractor, reference dataset, normalization) and discuss limitations of this approach.
 
 ---
 
-### **Module 3: Computer Vision II — Beyond Classification**
+### **Module 3: Generative Models — Variational Autoencoders**
 
-**Duration:** 2 weeks
-**Goal:** Expand from image *classification* to *detection* and *segmentation*.
+**Duration:** 2 weeks  
+**Goal:** Learn how convolutional VAEs model images, structure a latent space, and expose it through interactive PCA controls.
 
-**Topics:**
+***Lesson 5:***
+* Convolutional VAE architecture for 64×64 RGB faces: encoder/decoder CNN blocks and latent heads (`projects/face_autoencoder/src/model.py`).
+* Latent Gaussian variables, the reparameterization trick, and the \(\beta\)-ELBO loss (reconstruction term + KL divergence).
+* Training utilities, inline reconstruction visualizations, and different reconstruction losses (MSE, log-MSE, perceptual).
+* Collecting latent representations, running PCA, and saving components / variance / latent mean as artifacts.
+* Using PCA components to control face generation via Gradio sliders in `projects/face_autoencoder/src/app.py`.
+* Comparing VAEs vs regular autoencoders and understanding how KL regularization shapes a smooth latent space.
 
-* Receptive Fields — why deeper = more context
-* Transfer Learning (reusing pre-trained CNNs)
-* Object Detection & Segmentation (intro-level YOLO / UNet intuition)
-* Evaluation Metrics (Precision, Recall, IoU — explained with visuals)
-
-**Hands-on:**
-👉 Use transfer learning (e.g. ResNet on a new dataset)
-👉 Try a pretrained YOLOv5 or UNet model on custom images
+**Hands-on / Mini-project:**
+👉 Run `projects/face_autoencoder/face_autoencoder_training.ipynb` to train the convolutional VAE on faces and export artifacts.  
+👉 Launch the interactive app with `python -m projects.face_autoencoder.src.app` and explore how PCA sliders change facial attributes.  
+👉 Optionally, modify \(\beta\), architecture depth, or reconstruction loss and compare reconstructions and latent PCA directions.
 
 ---
 
