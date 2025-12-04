@@ -63,7 +63,7 @@ def _resolve_artifact_path(artifact_path: str, metadata_path: Path) -> Path:
     if path.is_absolute():
         return path
     # Otherwise, resolve relative to ARTIFACT_DIR
-    return (ARTIFACT_DIR / path).resolve()
+    return (metadata_path.parent / path).resolve()
 
 
 def load_artifacts(metadata_path: Path | None = None) -> tuple[ConvVAE, dict]:
@@ -148,6 +148,10 @@ def launch(metadata_path: str | None = None) -> None:
     initial_generator = make_generator(initial_model, initial_metadata)
     initial_num_components = len(initial_var_ratio)
     
+    # Generate initial random image
+    initial_random_coeffs = random_coeffs(initial_num_components)
+    initial_image = initial_generator(*initial_random_coeffs)
+    
     # Find initial run_id
     initial_run_id = None
     for run_id, path in available_runs:
@@ -180,20 +184,23 @@ def launch(metadata_path: str | None = None) -> None:
         
         slider_rows: list[gr.Slider] = []
         with gr.Row():
-            image_output = gr.Image(label="Generated Face", width=256, height=256)
+            image_output = gr.Image(label="Generated Face", width=256, height=256, value=initial_image)
         with gr.Column():
             # Create sliders for maximum components, but only show labels for active ones
             for idx in range(max_components):
                 if idx < len(initial_var_ratio):
                     label = f"PC {idx + 1} ({initial_var_ratio[idx]*100:.1f}% var)"
                     visible = True
+                    # Use random coefficient for initial value
+                    initial_value = initial_random_coeffs[idx]
                 else:
                     label = f"PC {idx + 1} (unused)"
                     visible = False
+                    initial_value = 0.0
                 slider = gr.Slider(
                     minimum=-3.0,
                     maximum=3.0,
-                    value=0.0,
+                    value=initial_value,
                     step=0.1,
                     label=label,
                     visible=visible,
@@ -224,7 +231,7 @@ def launch(metadata_path: str | None = None) -> None:
             padded_coeffs = list(coeffs) + [0.0] * (max_components - num_components)
             return (*padded_coeffs, img)
 
-        def switch_run(run_id: str) -> tuple[dict, dict, dict, int, str, np.ndarray, list[dict]]:
+        def switch_run(run_id: str):
             """Switch to a different run and reload artifacts."""
             # Find metadata path for selected run
             metadata_path = None
@@ -242,23 +249,24 @@ def launch(metadata_path: str | None = None) -> None:
             var_ratio = metadata["pca_var_ratio"]
             num_components = len(var_ratio)
             
-            # Generate initial image with zero coefficients
-            initial_img = generator(*([0.0] * num_components))
+            # Generate initial image with random coefficients
+            random_coeffs_list = random_coeffs(num_components)
+            initial_img = generator(*random_coeffs_list)
             
             # Update slider visibility and labels
             slider_updates = []
             for idx in range(max_components):
                 if idx < num_components:
                     slider_updates.append(
-                        gr.Slider.update(
+                        gr.update(
                             label=f"PC {idx + 1} ({var_ratio[idx]*100:.1f}% var)",
-                            value=0.0,
+                            value=random_coeffs_list[idx],
                             visible=True,
                         )
                     )
                 else:
                     slider_updates.append(
-                        gr.Slider.update(
+                        gr.update(
                             label=f"PC {idx + 1} (unused)",
                             value=0.0,
                             visible=False,
@@ -272,7 +280,7 @@ def launch(metadata_path: str | None = None) -> None:
                 num_components,
                 _format_run_info(metadata),
                 initial_img,
-                slider_updates,
+                *slider_updates,
             )
 
         # Wire up run switching
