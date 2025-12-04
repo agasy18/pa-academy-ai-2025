@@ -1,0 +1,22 @@
+{
+  "run_id": "20251130-150833",
+  "epochs": 500,
+  "batch_size": 64,
+  "latent_dim": 64,
+  "lr": 0.002,
+  "beta": 1.0,
+  "loss_type": "log_mse",
+  "pca_components": 8,
+  "seed": 42,
+  "image_size": 96,
+  "lfw_resize": 1.0,
+  "run_dir": ".",
+  "model_path": "model.pth",
+  "pca_path": "pca.npz",
+  "log_path": "history.csv",
+  "dataset": {
+    "num_samples": 13233,
+    "height": 125,
+    "width": 94
+  }
+}
