@@ -139,6 +139,38 @@ Every 2 modules → **mini project** (e.g. “Build your own image classifier”
 
 ---
 
+### 🏆 Competitions
+
+**Lesson 1: The Minimalist Network Challenge**
+
+**Goal:** Solve the "Spiral" classification problem (`notebooks/lesson1_demo.ipynb`) with the most efficient architectures possible while maintaining **> 83% validation accuracy**.
+
+**Tasks:**
+1. **Baseline:** Implement and train at least two different architectures that exceed 83% accuracy on the spiral dataset.
+2. **The "Shallow" Challenge:** Design a network with exactly **2 hidden layers**. Find the configuration with the **fewest total parameters** that still passes the accuracy threshold.
+   - *Report:* Hidden unit counts (e.g., 2 -> H1 -> H2 -> 1) and total parameter count.
+3. **The "Deep" Challenge:** Design a network with exactly **10 hidden layers**. Find the configuration with the **fewest total parameters** that still passes the accuracy threshold.
+   - *Report:* Hidden unit counts and total parameter count.
+
+**Submission:** Submit your notebook with the architecture definitions, training plots, and a summary table of your results.
+
+**Lesson 2: The Fashion MNIST Accuracy Challenge**
+
+**Goal:** Achieve the highest possible test accuracy on the **Fashion MNIST** dataset.
+
+**Rules:**
+- **Open Leaderboard:** You may use **any** deep learning architecture (MLP, CNN, ResNet, ViT, etc.) and **any** training technique (data augmentation, learning rate scheduling, ensembles, etc.).
+- **Constraint:** The model must be trained from scratch (no pre-trained weights from ImageNet, etc.).
+- **Evaluation:** Accuracy on the standard Fashion MNIST test set (10,000 images).
+
+**Submission:** Submit a notebook (or script) that:
+1. Defines the model and training loop.
+2. Trains the model (or loads your best checkpoint).
+3. Evaluates and prints the final accuracy on the test set.
+4. Includes a brief summary of your approach (what worked, what didn't).
+
+---
+
 ## 📽️ Slides (Reveal.js)
 
 - Quick start: from repo root run `python3 -m http.server` and visit `http://localhost:8000/slides/`
