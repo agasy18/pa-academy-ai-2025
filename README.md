@@ -73,7 +73,7 @@ Additional resources (used in Lesson 3 slides):
 
 ### **Module 3: Generative Models — Variational Autoencoders**
 
-**Duration:** 2 weeks  
+**Duration:** 1 weeks  
 **Goal:** Learn how convolutional VAEs model images, structure a latent space, and expose it through interactive PCA controls.
 
 ***Lesson 5:***
@@ -98,15 +98,27 @@ Additional resources (used in Lesson 3 slides):
 
 **Topics:**
 
-* From Words to Numbers (Tokenization, Embeddings, Word2Vec)
+* From Words to Numbers (tokenization, vocabularies, embeddings, CBOW & Skip-Gram / Word2Vec, and visualizing embeddings with PCA / TensorFlow Embedding Projector)
 * Text Classification (sentiment analysis example)
 * Sequence Models (LSTM — intuition, visualize time steps)
 * Transformers & Attention (interactive demo)
 * Pre-trained Models (BERT & GPT — how they understand context)
 
-**Hands-on:**
-👉 Build a simple sentiment classifier
-👉 Use a pretrained transformer to answer questions or summarize text
+***Lesson 6:***
+* From words to numbers: simple tokenization, building vocabularies, and mapping tokens to integer IDs.
+* One-hot vs dense word embeddings; using `nn.Embedding` in PyTorch.
+* Distributional semantics and Word2Vec intuition: CBOW and Skip-Gram.
+* Visualizing word embeddings with PCA and the TensorFlow Embedding Projector (Word2Vec 10K).
+* Simple embedding-based sentiment classifier with mean pooling over word vectors.
+
+**Hands-on / Notebook:**
+👉 Work through `notebooks/lesson6_word_embeddings.ipynb` to build tokenization and vocab, experiment with `nn.Embedding`, explore pretrained word vectors and “word math”, train tiny Skip-Gram/CBOW models, and visualize embeddings with PCA.
+
+***Lesson 6 Homework:***
+* Implement a small tokenizer and vocabulary builder for a text dataset (e.g., movie reviews).
+* Train a simple sentiment classifier in PyTorch using `nn.Embedding` + mean pooling + linear layer.
+* Inspect nearest neighbors in your learned embedding space (e.g., around “good”, “bad”, “great”, “terrible”) and briefly describe what you see.
+* Optional: train a tiny Skip-Gram or CBOW model on your corpus and compare its nearest neighbors to those from pretrained GloVe/Word2Vec.
 
 ---
 
@@ -128,16 +140,6 @@ Additional resources (used in Lesson 3 slides):
 
 ---
 
-### 🔁 Rhythm & Pedagogy
-
-Each week:
-
-* **Lesson 1 (2h):** Concept + interactive demo (with minimal math)
-* **Lesson 2 (2h):** Guided coding + mini challenge
-
-Every 2 modules → **mini project** (e.g. “Build your own image classifier” or “Train a chatbot”).
-
----
 
 ### 🏆 Competitions
 
@@ -179,6 +181,8 @@ Every 2 modules → **mini project** (e.g. “Build your own image classifier”
   - `slides/lesson2.html` — Lesson 2: How Neural Networks Learn (activations, loss functions, optimizers, and MNIST training in PyTorch)
   - `slides/lesson3.html` — Lesson 3: Convolutional Neural Networks (convolutions, pooling, Dropout/BatchNorm, and a CNN for MNIST)
   - `slides/lesson4.html` — Lesson 4: Data Augmentation, Transfer Learning & CNN Architectures (data augmentation, intro transfer learning with a pre-trained CNN, LeNet → AlexNet → VGG → Inception → ResNet, and object tracking context)
+  - `slides/lesson5.html` — Lesson 5: Variational Autoencoders & Latent PCA (convolutional VAE for faces, β-ELBO loss, KL divergence, latent PCA controls, and perceptual vs MSE reconstruction losses)
+  - `slides/lesson6.html` — Lesson 6: NLP — From Words to Embeddings (tokenization, vocabularies, embeddings, Word2Vec/CBOW/Skip-gram intuition, and a simple sentiment classifier)
 
 ---
 
