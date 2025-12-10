@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 6 — NLP: From Words to Embeddings</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
+    <style>
+      .code-small pre code { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; align-items: flex-start; }
+      .two-column > div { flex: 1; }
+      .small { font-size: 0.9em; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 6: NLP — From Words to Embeddings</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand how raw text becomes tokens and integer ids.</li>
+            <li class="fragment">Explain word embeddings and the idea that similar context → similar vectors.</li>
+            <li class="fragment">Use <code>nn.Embedding</code> in PyTorch to map tokens to dense vectors.</li>
+            <li class="fragment">Outline a simple sentiment classifier built on embeddings.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Why NLP Feels Different from Vision</h3>
+          <ul class="small">
+            <li class="fragment">Images: fixed-size grids of pixels (e.g., 28×28, 64×64), naturally numeric.</li>
+            <li class="fragment">Text: variable-length sequences of discrete symbols (characters, words, subwords).</li>
+            <li class="fragment">Goal: turn text into numbers while preserving meaning and order.</li>
+          </ul>
+          <pre><code class="language-dot" data-graphviz>
+digraph nlp_vs_vision {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  img   [label="Image\n(64x64x3 pixels)"];
+  txt   [label="Text\n(\"I really liked this movie\")"];
+  cnn   [label="CNN / VAE"];
+  nlp   [label="Embedding + NLP model"];
+
+  img -> cnn;
+  txt -> nlp;
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Text Processing Pipeline</h3>
+          <p class="small">High-level steps to go from raw text to model-ready tensors.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph nlp_pipeline {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  text   [label="Raw text\n\"I loved the movie!\""];
+  tokens [label="Tokenization\n['I', 'loved', 'the', 'movie']"];
+  ids    [label="Vocabulary lookup\n[12, 57, 3, 98]"];
+  emb    [label="Embedding layer\nlookup vectors"];
+  model  [label="NLP model\nclassifier / LM"];
+
+  text -> tokens -> ids -> emb -> model;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Today: focus on <strong>tokens</strong>, <strong>vocabulary</strong>, and <strong>embeddings</strong>.</li>
+            <li class="fragment">Next lesson: sequence models (LSTM, Transformers) on top of embeddings.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Tokenization: Breaking Text into Pieces</h3>
+          <p class="small">Tokenization splits text into units that the model will see.</p>
+          <div class="two-column small">
+            <div>
+              <h4>Common Choices</h4>
+              <ul>
+                <li class="fragment"><strong>Whitespace / word-level:</strong> simple, language-dependent.</li>
+                <li class="fragment"><strong>Character-level:</strong> smallest units, robust but long sequences.</li>
+                <li class="fragment"><strong>Subword (BPE, WordPiece):</strong> balance between words and chars.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Example (word-level)</h4>
+              <pre class="code-small"><code class="language-python">text = "I really liked this movie!"
+tokens = ["I", "really", "liked", "this", "movie", "!"]</code></pre>
+              <ul>
+                <li class="fragment">Punctuation can be kept as separate tokens.</li>
+                <li class="fragment">Case folding (lowercasing) is a design choice.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Vocabulary & Integer Encoding</h3>
+          <p class="small">Models operate on integers, not strings. We build a <em>vocabulary</em> mapping each token to an id.</p>
+          <pre class="code-small"><code class="language-python">tokens = ["i", "really", "liked", "this", "movie", "!"]
+
+vocab = {
+    "&lt;pad&gt;": 0,
+    "&lt;unk&gt;": 1,
+    "i": 2,
+    "really": 3,
+    "liked": 4,
+    "this": 5,
+    "movie": 6,
+    "!": 7,
+}
+
+ids = [vocab.get(t, vocab["&lt;unk&gt;"]) for t in tokens]
+# ids: [2, 3, 4, 5, 6, 7]</code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>&lt;unk&gt;</strong> handles out-of-vocabulary words at inference time.</li>
+            <li class="fragment"><strong>&lt;pad&gt;</strong> is used later when batching sequences of different lengths.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>From One-Hot to Embeddings</h3>
+          <div class="two-column small">
+            <div>
+              <h4>One-Hot Representation</h4>
+              <ul>
+                <li class="fragment">Vector of size \(|V|\) (vocabulary size).</li>
+                <li class="fragment">Exactly one position is 1, others 0.</li>
+                <li class="fragment">Very sparse and high-dimensional.</li>
+                <li class="fragment">Does not capture similarity between words.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Embedding Vectors</h4>
+              <ul>
+                <li class="fragment">Dense vectors of size \(d\) (e.g., 64, 128).</li>
+                <li class="fragment">Learned from data together with the model.</li>
+                <li class="fragment">Similar words → similar vectors (in practice).</li>
+                <li class="fragment">Basis of Word2Vec, GloVe, BERT, GPT, etc.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Embedding Math (Single Token)</h3>
+          <p class="small">Let \(|V|\) be vocabulary size and \(d\) embedding dimension.</p>
+          <ul class="small">
+            <li class="fragment">Embedding matrix: \(E \in \mathbb{R}^{|V| \times d}\).</li>
+            <li class="fragment">One-hot vector for token \(i\): \(\mathbf{e}_i \in \mathbb{R}^{|V|}\) with 1 at position \(i\), 0 elsewhere.</li>
+            <li class="fragment">Embedding lookup is just matrix multiplication:
+              \[
+                \mathbf{x}_i = \mathbf{e}_i^\top E \in \mathbb{R}^d.
+              \]
+            </li>
+            <li class="fragment">In code, we skip building \(\mathbf{e}_i\) and directly index row \(i\) of \(E\).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Embedding Table Example</h3>
+          <p class="small">Toy vocabulary with \(|V| = 4\) and \(d = 2\).</p>
+          <table class="small">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Id</th>
+                <th>One-hot \(\mathbf{e}_i\)</th>
+                <th>Embedding \(\mathbf{x}_i\)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="fragment">
+                <td>good</td>
+                <td>0</td>
+                <td>\([1, 0, 0, 0]\)</td>
+                <td>\([0.8,\ 0.6]\)</td>
+              </tr>
+              <tr class="fragment">
+                <td>great</td>
+                <td>1</td>
+                <td>\([0, 1, 0, 0]\)</td>
+                <td>\([0.9,\ 0.7]\)</td>
+              </tr>
+              <tr class="fragment">
+                <td>bad</td>
+                <td>2</td>
+                <td>\([0, 0, 1, 0]\)</td>
+                <td>\([-0.7,\ -0.6]\)</td>
+              </tr>
+              <tr class="fragment">
+                <td>terrible</td>
+                <td>3</td>
+                <td>\([0, 0, 0, 1]\)</td>
+                <td>\([-0.9,\ -0.8]\)</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="small fragment">Vectors for “good” and “great” are close; “bad” and “terrible” are close but far from the positives.</p>
+        </section>
+
+        <section>
+          <h3>PyTorch <code>nn.Embedding</code></h3>
+          <p class="small">The embedding layer is just a learnable matrix of shape \((|V|, d)\).</p>
+          <pre class="code-small"><code class="language-python">import torch
+import torch.nn as nn
+
+vocab_size = len(vocab)
+embedding_dim = 64
+
+emb = nn.Embedding(num_embeddings=vocab_size,
+                   embedding_dim=embedding_dim)
+
+ids = torch.tensor([[2, 3, 4, 5, 6, 7]])  # shape: (batch=1, seq_len=6)
+embedded = emb(ids)  # shape: (1, 6, 64)</code></pre>
+          <ul class="small">
+            <li class="fragment">Each token id picks one row from the embedding matrix.</li>
+            <li class="fragment">Gradients update the embeddings during training, just like CNN weights.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Distributional Semantics &amp; Word2Vec Intuition</h3>
+          <p class="small">Core idea: “You shall know a word by the company it keeps.” (Firth, 1957)</p>
+          <ul class="small">
+            <li class="fragment">Words appearing in similar contexts should have similar embeddings.</li>
+            <li class="fragment">Word2Vec trains a small network to predict a word from its neighbors (CBOW) or neighbors from a word (Skip-gram).</li>
+            <li class="fragment">The hidden layer weights become useful word vectors.</li>
+          </ul>
+          <pre class="code-small"><code class="language-python"># Pseudocode: Skip-gram training example
+center = "movie"
+context = ["great", "funny", "exciting"]
+
+# Objective: embeddings("movie") should be
+# good at predicting its context words.</code></pre>
+        </section>
+
+        <section>
+          <h3>CBOW: Predict Center Word from Context</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Input: context words around a missing center word.</li>
+                <li class="fragment">Look up embeddings, then average (or sum) them into a single context vector.</li>
+                <li class="fragment">Linear layer + softmax predicts the center word id.</li>
+                <li class="fragment">Training objective: maximize \(p(w_{\text{center}} \mid \text{context})\).</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph cbow {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  c1   [label="Context word\n'I'"];
+  c2   [label="Context word\n'the'"];
+  c3   [label="Context word\n'movie'"];
+  emb  [label="Embedding\nlookup"];
+  avg  [label="Average\ncontext vectors"];
+  out  [label="Linear + Softmax\np(center | context)"];
+  ctr  [label="Predicted\ncenter word\n'loved'"];
+
+  {c1 c2 c3} -> emb -> avg -> out -> ctr;
+}
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Skip-Gram: Predict Context from Center Word</h3>
+          <div class="two-column small">
+            <div>
+              <ul class="small">
+                <li class="fragment">Input: single center word.</li>
+                <li class="fragment">Output: each context word in a sliding window.</li>
+                <li class="fragment">Training objective:
+                  \[
+                    \sum_{c \in \text{context}} \log p(c \mid w_{\text{center}}).
+                  \]
+                </li>
+                <li class="fragment">Tends to learn good embeddings even for rare words.</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph skipgram {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  ctr   [label="Center word\n'movie'"];
+  emb   [label="Embedding\nlookup"];
+  out   [label="Linear + Softmax\np(context | center)"];
+  ctx1  [label="Context\n'great'"];
+  ctx2  [label="Context\n'funny'"];
+  ctx3  [label="Context\n'exciting'"];
+
+  ctr -> emb -> out;
+  out -> {ctx1 ctx2 ctx3};
+}
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>3D PCA Visualization of Word2Vec</h3>
+          <p class="small">We can <strong>see</strong> embeddings by projecting high-dimensional vectors (e.g., 300D Word2Vec) down to 3D with PCA.</p>
+          <ul class="small">
+            <li class="fragment">Tool: <a href="https://projector.tensorflow.org/" target="_blank" rel="noopener noreferrer">TensorFlow Embedding Projector</a>.</li>
+            <li class="fragment">Preset dataset: <strong>Word2Vec 10K</strong> (10,000 common English words).</li>
+            <li class="fragment">Projection: choose <strong>PCA</strong> and set the view to <strong>3D</strong>.</li>
+            <li class="fragment">Explore: search for words like “king”, “queen”, “man”, “woman” and see clusters and directions.</li>
+          </ul>
+          <p class="small fragment">PCA finds directions of maximum variance; 3D PCA gives an intuitive, interactive view of the global structure of the embedding space.</p>
+        </section>
+
+        <section>
+          <h3>Simple Sentiment Classifier Architecture</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Input: token ids for a review (e.g., IMDB sentence).</li>
+                <li class="fragment">Embedding layer maps each token to a vector.</li>
+                <li class="fragment">Pool over time (e.g., mean) to get a single sentence vector.</li>
+                <li class="fragment">Linear layer maps to sentiment score (positive / negative).</li>
+              </ul>
+            </div>
+            <div class="code-small">
+              <pre><code class="language-python">class SimpleSentimentModel(nn.Module):
+    def __init__(self, vocab_size, emb_dim=64):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, emb_dim)
+        self.fc = nn.Linear(emb_dim, 1)  # binary
+
+    def forward(self, ids):
+        # ids: (batch, seq_len)
+        x = self.embedding(ids)          # (batch, seq_len, emb_dim)
+        x = x.mean(dim=1)                # (batch, emb_dim)
+        logits = self.fc(x)              # (batch, 1)
+        return logits.squeeze(-1)</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Handling Variable-Length Sequences</h3>
+          <ul class="small">
+            <li class="fragment">Real sentences have different lengths → we need batching.</li>
+            <li class="fragment">Common approach: pad shorter sequences with <code>&lt;pad&gt;</code> up to a fixed length.</li>
+            <li class="fragment">Later (LSTMs/Transformers) we will also use attention masks to ignore padding.</li>
+          </ul>
+          <pre class="code-small"><code class="language-python">max_len = 10
+
+def pad(ids, max_len, pad_id=0):
+    return ids[:max_len] + [pad_id] * max(0, max_len - len(ids))
+
+batch_ids = [
+    pad([2, 3, 4, 5, 6, 7], max_len),
+    pad([2, 4, 6], max_len),
+]</code></pre>
+        </section>
+
+        <section>
+          <h3>Homework / Hands-On Ideas</h3>
+          <ul class="small">
+            <li class="fragment">Load a small sentiment dataset (e.g., movie reviews with positive/negative labels).</li>
+            <li class="fragment">Implement a simple tokenizer and vocabulary builder.</li>
+            <li class="fragment">Use <code>nn.Embedding</code> + mean pooling + linear classifier to predict sentiment.</li>
+            <li class="fragment">Inspect a few learned word vectors (e.g., cosine similarity between “great”, “good”, “terrible”).</li>
+            <li class="fragment">Reflect: compared to image models, what feels similar vs different about the pipeline?</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Looking Ahead: Sequence Models &amp; Transformers</h3>
+          <ul class="small">
+            <li class="fragment">Recurrent networks (LSTMs) process sequences step by step, keeping a hidden state.</li>
+            <li class="fragment">Attention and Transformers let models look at all positions in parallel.</li>
+            <li class="fragment">Pretrained models (BERT, GPT) start from large-scale text and fine-tune to tasks.</li>
+            <li class="fragment">All of them <strong>start</strong> from embeddings like the ones we built today.</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
+    <script>
+      initializeSlides({
+        width: 1536,
+        height: 864,
+      });
+    </script>
+  </body>
+</html>
