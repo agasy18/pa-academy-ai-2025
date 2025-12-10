@@ -31,6 +31,58 @@
         </section>
 
         <section>
+          <h3>Plain Autoencoder (Deterministic)</h3>
+          <p class="small">A basic autoencoder compresses and reconstructs data without any probabilistic latent space.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph ae_flow {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  x      [label="Input image\nx"];
+  enc    [label="Encoder\nConv / Linear layers"];
+  z      [label="Latent code\nz"];
+  dec    [label="Decoder\nConvTranspose / Linear"];
+  x_hat  [label="Reconstruction\nx̂"];
+
+  x -> enc -> z -> dec -> x_hat;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Train by minimizing reconstruction loss (e.g., MSE) between \(x\) and \(\hat{x}\).</li>
+            <li class="fragment">Latent code \(z\) is a deterministic function of \(x\) with no explicit prior.</li>
+            <li class="fragment">Works well for compression and denoising, but latent space may have gaps and is not guaranteed to be smooth.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Autoencoders on MNIST / Fashion-MNIST</h3>
+          <p class="small">Before VAEs, it is useful to build intuition with a small, deterministic autoencoder on simple 28x28 images.</p>
+          <ul class="small">
+            <li class="fragment">Datasets: <code>MNIST</code> (digits) and <code>Fashion-MNIST</code> (clothing items).</li>
+            <li class="fragment">Goal: learn a compact latent code that can reconstruct inputs and optionally denoise simple corruptions.</li>
+            <li class="fragment">Architecture: 2–3 fully connected or convolutional layers in the encoder and a mirrored decoder.</li>
+          </ul>
+          <pre class="code-small"><code class="language-python">class MnistAutoencoder(nn.Module):
+    def __init__(self, latent_dim=32):
+        super().__init__()
+        self.encoder = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(28 * 28, 256), nn.ReLU(),
+            nn.Linear(256, latent_dim),
+        )
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim, 256), nn.ReLU(),
+            nn.Linear(256, 28 * 28), nn.Sigmoid(),
+        )
+
+    def forward(self, x):
+        z = self.encoder(x)
+        x_hat = self.decoder(z).view(-1, 1, 28, 28)
+        return x_hat</code></pre>
+          <p class="small fragment">We will use this style of model for the homework on MNIST and Fashion-MNIST.</p>
+        </section>
+
+        <section>
           <h3>Where the VAE Fits</h3>
           <p class="small">We train a generative model that learns a smooth latent space of 64x64 RGB faces and supports interactive exploration.</p>
           <pre><code class="language-dot" data-graphviz>
@@ -151,128 +203,6 @@ loss = recon_loss + beta * kl_div
           </div>
         </section>
 
-        <section>
-          <h3>Plain Autoencoder (Deterministic)</h3>
-          <p class="small">A basic autoencoder compresses and reconstructs data without any probabilistic latent space.</p>
-          <pre><code class="language-dot" data-graphviz>
-digraph ae_flow {
-  rankdir=LR;
-  node [fontsize=11, shape=box, style=rounded];
-
-  x      [label="Input image\nx"];
-  enc    [label="Encoder\nConv / Linear layers"];
-  z      [label="Latent code\nz"];
-  dec    [label="Decoder\nConvTranspose / Linear"];
-  x_hat  [label="Reconstruction\nx̂"];
-
-  x -> enc -> z -> dec -> x_hat;
-}
-          </code></pre>
-          <ul class="small">
-            <li class="fragment">Train by minimizing reconstruction loss (e.g., MSE) between \(x\) and \(\hat{x}\).</li>
-            <li class="fragment">Latent code \(z\) is a deterministic function of \(x\) with no explicit prior.</li>
-            <li class="fragment">Works well for compression and denoising, but latent space may have gaps and is not guaranteed to be smooth.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Autoencoders on MNIST / Fashion-MNIST</h3>
-          <p class="small">Before VAEs, it is useful to build intuition with a small, deterministic autoencoder on simple 28x28 images.</p>
-          <ul class="small">
-            <li class="fragment">Datasets: <code>MNIST</code> (digits) and <code>Fashion-MNIST</code> (clothing items).</li>
-            <li class="fragment">Goal: learn a compact latent code that can reconstruct inputs and optionally denoise simple corruptions.</li>
-            <li class="fragment">Architecture: 2–3 fully connected or convolutional layers in the encoder and a mirrored decoder.</li>
-          </ul>
-          <pre class="code-small"><code class="language-python">class MnistAutoencoder(nn.Module):
-    def __init__(self, latent_dim=32):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(28 * 28, 256), nn.ReLU(),
-            nn.Linear(256, latent_dim),
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, 256), nn.ReLU(),
-            nn.Linear(256, 28 * 28), nn.Sigmoid(),
-        )
-
-    def forward(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z).view(-1, 1, 28, 28)
-        return x_hat</code></pre>
-          <p class="small fragment">We will use this style of model for the homework on MNIST and Fashion-MNIST.</p>
-        </section>
-
-        <section>
-          <h3>VAE vs Regular Autoencoder</h3>
-          <div class="two-column small">
-            <div>
-              <h4>Regular Autoencoder</h4>
-              <ul>
-                <li class="fragment">Encoder: \(x \to z\) (deterministic)</li>
-                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
-                <li class="fragment">Latent space: unconstrained; may be irregular with “holes”.</li>
-                <li class="fragment">Problem: sampling random \(z\) often lands off the data manifold → poor or meaningless generations.</li>
-              </ul>
-            </div>
-            <div>
-              <h4>Variational Autoencoder</h4>
-              <ul>
-                <li class="fragment">Encoder: \(x \to (\mu, \sigma)\) (probabilistic)</li>
-                <li class="fragment">Sample: \(z \sim \mathcal{N}(\mu, \sigma^2)\)</li>
-                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
-                <li class="fragment">Latent space: continuous, smooth, generative</li>
-              </ul>
-            </div>
-          </div>
-          <p class="small fragment">VAEs learn a <em>distribution</em> over latents, enabling smooth interpolation and generation of new faces.</p>
-        </section>
-
-        <section>
-          <h3>From Autoencoder Loss to VAE Loss</h3>
-          <ul class="small">
-            <li class="fragment"><strong>Autoencoder objective:</strong> minimize reconstruction error only, e.g. \(L_{\text{AE}} = \mathbb{E}_{x}[\|x - \hat{x}\|^2]\).</li>
-            <li class="fragment">No explicit constraint on where latent codes \(z\) live → irregular latent space and poor samples from random \(z\).</li>
-            <li class="fragment"><strong>VAE objective:</strong> keep reconstruction term, but add a KL regularizer that pulls \(q_\phi(z \mid x)\) toward a simple prior \(p(z)\).</li>
-            <li class="fragment">This gives the Evidence Lower Bound (ELBO): \(\mathcal{L} = \mathbb{E}[\log p_\theta(x \mid z)] - \beta \, \mathrm{KL}(q_\phi(z \mid x) \Vert p(z))\).</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>VAE Generative Story</h3>
-          <ul class="small">
-            <li class="fragment"><strong>Prior:</strong> choose a simple latent distribution \(p(z) = \mathcal{N}(0, I)\).</li>
-            <li class="fragment"><strong>Decoder:</strong> learn \(p_\theta(x \mid z)\) (e.g., Gaussian with mean given by a neural network) to reconstruct data from latent codes.</li>
-            <li class="fragment"><strong>Encoder:</strong> learn \(q_\phi(z \mid x)\) that maps each example to a latent Gaussian \(\mathcal{N}(\mu(x), \sigma^2(x))\).</li>
-            <li class="fragment">At test time we can either <em>encode–decode</em> (like an autoencoder) or <em>sample</em> \(z \sim p(z)\) and decode to generate new examples.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Step-by-Step: AE → VAE</h3>
-          <div class="two-column small">
-            <div>
-              <h4>Plain Autoencoder</h4>
-              <ul>
-                <li class="fragment">Input \(x\)</li>
-                <li class="fragment">Encoder outputs latent code \(z\)</li>
-                <li class="fragment">Decoder outputs \(\hat{x}\)</li>
-                <li class="fragment">Loss: reconstruction only (e.g., MSE)</li>
-                <li class="fragment">Sampling: ad hoc; random \(z\) may not decode to realistic data</li>
-              </ul>
-            </div>
-            <div>
-              <h4>Variational Autoencoder</h4>
-              <ul>
-                <li class="fragment">Input \(x\)</li>
-                <li class="fragment">Encoder outputs \((\mu(x), \log \sigma^2(x))\)</li>
-                <li class="fragment">Sample \(z = \mu + \sigma \odot \epsilon\), \(\epsilon \sim \mathcal{N}(0, I)\)</li>
-                <li class="fragment">Decoder outputs \(\hat{x}\)</li>
-                <li class="fragment">Loss: reconstruction + KL to prior → well-structured latent space</li>
-              </ul>
-            </div>
-          </div>
-        </section>
 
         <section>
           <h3>Homework: Train an Autoencoder on MNIST & Fashion-MNIST</h3>
@@ -383,8 +313,21 @@ z = mu + eps * std
 recon_loss = torch.log(mse + 1e-8)
 # Or: loss_func = VAELoss(beta=1.0, use_log_mse=True)
 </code></pre>
-            </div>
+	            </div>
+	          </div>
+	        </section>
+
+        <section>
+          <h3>Visual Comparison of VAE Losses</h3>
+          <p class="small">Different reconstruction losses change how the VAE trades sharpness vs smoothness in generated faces.</p>
+          <div class="img-row">
+            <img src="assets/face_losses.png" alt="Side-by-side comparison of VAE reconstructions under different losses" style="max-width: 90%; border: 1px solid #ddd;" />
           </div>
+          <ul class="small">
+            <li class="fragment">MSE: smooth but often blurry reconstructions.</li>
+            <li class="fragment">Log(MSE): sharper details, still relatively cheap to train.</li>
+            <li class="fragment">Perceptual: most realistic faces, at the cost of extra compute.</li>
+          </ul>
         </section>
 
         <section>
@@ -566,6 +509,77 @@ for alpha in [0.0, 0.25, 0.5, 0.75, 1.0]:
                 <li>Use \(\beta\)-VAE (\(\beta > 1\))</li>
                 <li>Train longer</li>
                 <li>Check KL term is active</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>VAE vs Regular Autoencoder</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Regular Autoencoder</h4>
+              <ul>
+                <li class="fragment">Encoder: \(x \to z\) (deterministic)</li>
+                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
+                <li class="fragment">Latent space: unconstrained; may be irregular with “holes”.</li>
+                <li class="fragment">Problem: sampling random \(z\) often lands off the data manifold → poor or meaningless generations.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Variational Autoencoder</h4>
+              <ul>
+                <li class="fragment">Encoder: \(x \to (\mu, \sigma)\) (probabilistic)</li>
+                <li class="fragment">Sample: \(z \sim \mathcal{N}(\mu, \sigma^2)\)</li>
+                <li class="fragment">Decoder: \(z \to \hat{x}\)</li>
+                <li class="fragment">Latent space: continuous, smooth, generative</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">VAEs learn a <em>distribution</em> over latents, enabling smooth interpolation and generation of new faces.</p>
+        </section>
+
+        <section>
+          <h3>From Autoencoder Loss to VAE Loss</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Autoencoder objective:</strong> minimize reconstruction error only, e.g. \(L_{\text{AE}} = \mathbb{E}_{x}[\|x - \hat{x}\|^2]\).</li>
+            <li class="fragment">No explicit constraint on where latent codes \(z\) live → irregular latent space and poor samples from random \(z\).</li>
+            <li class="fragment"><strong>VAE objective:</strong> keep reconstruction term, but add a KL regularizer that pulls \(q_\phi(z \mid x)\) toward a simple prior \(p(z)\).</li>
+            <li class="fragment">This gives the Evidence Lower Bound (ELBO): \(\mathcal{L} = \mathbb{E}[\log p_\theta(x \mid z)] - \beta \, \mathrm{KL}(q_\phi(z \mid x) \Vert p(z))\).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>VAE Generative Story</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Prior:</strong> choose a simple latent distribution \(p(z) = \mathcal{N}(0, I)\).</li>
+            <li class="fragment"><strong>Decoder:</strong> learn \(p_\theta(x \mid z)\) (e.g., Gaussian with mean given by a neural network) to reconstruct data from latent codes.</li>
+            <li class="fragment"><strong>Encoder:</strong> learn \(q_\phi(z \mid x)\) that maps each example to a latent Gaussian \(\mathcal{N}(\mu(x), \sigma^2(x))\).</li>
+            <li class="fragment">At test time we can either <em>encode–decode</em> (like an autoencoder) or <em>sample</em> \(z \sim p(z)\) and decode to generate new examples.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Step-by-Step: AE → VAE</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Plain Autoencoder</h4>
+              <ul>
+                <li class="fragment">Input \(x\)</li>
+                <li class="fragment">Encoder outputs latent code \(z\)</li>
+                <li class="fragment">Decoder outputs \(\hat{x}\)</li>
+                <li class="fragment">Loss: reconstruction only (e.g., MSE)</li>
+                <li class="fragment">Sampling: ad hoc; random \(z\) may not decode to realistic data</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Variational Autoencoder</h4>
+              <ul>
+                <li class="fragment">Input \(x\)</li>
+                <li class="fragment">Encoder outputs \((\mu(x), \log \sigma^2(x))\)</li>
+                <li class="fragment">Sample \(z = \mu + \sigma \odot \epsilon\), \(\epsilon \sim \mathcal{N}(0, I)\)</li>
+                <li class="fragment">Decoder outputs \(\hat{x}\)</li>
+                <li class="fragment">Loss: reconstruction + KL to prior → well-structured latent space</li>
               </ul>
             </div>
           </div>
