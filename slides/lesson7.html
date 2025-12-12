@@ -15,12 +15,19 @@
       .small { font-size: 0.9em; }
       .attention-matrix { font-family: monospace; font-size: 0.7em; }
       .highlight-box { background: #e8f4f8; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+      .transition-slide { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+      .transition-slide h2 { color: white; }
+      .transition-slide p { color: rgba(255,255,255,0.9); }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
   <body>
     <div class="reveal">
       <div class="slides">
+
+        <!-- ========================================== -->
+        <!-- PART 1: INTRODUCTION & MOTIVATION         -->
+        <!-- ========================================== -->
 
         <section>
           <h2>Lesson 7: Transformers, Attention &amp; Pre-trained Models</h2>
@@ -98,6 +105,16 @@ digraph rnn {
           </div>
         </section>
 
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 1: The Attention Mechanism</h2>
+          <p>From sequential bottlenecks to parallel processing</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 2: UNDERSTANDING ATTENTION           -->
+        <!-- ========================================== -->
+
         <section>
           <h3>The Attention Intuition</h3>
           <p class="small">Instead of compressing everything into one hidden state, let the model <strong>look back</strong> at all previous tokens.</p>
@@ -109,6 +126,22 @@ digraph rnn {
             <li class="fragment">Originally designed for machine translation (Bahdanau et al., 2015).</li>
             <li class="fragment">Allows focusing on relevant words regardless of distance.</li>
           </ul>
+        </section>
+
+        <section>
+          <h3>Attention as Soft Dictionary Lookup</h3>
+          <p class="small">Think of attention like a fuzzy database query:</p>
+          <ul class="small">
+            <li class="fragment"><strong>Query (Q):</strong> "What am I looking for?" — current position's representation.</li>
+            <li class="fragment"><strong>Keys (K):</strong> "What does each position offer?" — representations of all positions.</li>
+            <li class="fragment"><strong>Values (V):</strong> "What information to retrieve?" — content at each position.</li>
+          </ul>
+          <p class="small fragment">
+            \[
+              \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+            \]
+          </p>
+          <p class="small fragment">The \(\sqrt{d_k}\) scaling prevents dot products from becoming too large.</p>
         </section>
 
         <section>
@@ -128,6 +161,33 @@ digraph rnn {
           <p class="small fragment">
             In attention: \(Q_i \cdot K_j\) measures how much position \(i\) should attend to position \(j\).
           </p>
+        </section>
+
+        <section>
+          <h3>Attention Formula Explained</h3>
+          <img src="assets/attention_formula_diagram.png" alt="Attention Formula Diagram" style="max-height: 400px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Step 1:</strong> Compute similarity scores: \(QK^\top\) (dot product of queries and keys)</li>
+              <li class="fragment"><strong>Step 2:</strong> Scale by \(\sqrt{d_k}\) to prevent gradient vanishing/exploding</li>
+              <li class="fragment"><strong>Step 3:</strong> Apply softmax to get attention weights (sum to 1)</li>
+              <li class="fragment"><strong>Step 4:</strong> Weight the values and sum to get context-aware representations</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Attention Data Flow</h3>
+          <img src="assets/attention_flow.png" alt="Attention Flow Diagram" style="max-height: 400px;">
+          <div class="small">
+            <ol>
+              <li class="fragment">Project input X to Query, Key, Value matrices using learned weights</li>
+              <li class="fragment">Compute attention scores: \(QK^T\) measures similarity between all pairs</li>
+              <li class="fragment">Scale by \(\sqrt{d_k}\) to stabilize gradients</li>
+              <li class="fragment">Softmax normalizes scores to sum to 1 (attention weights)</li>
+              <li class="fragment">Weight values by attention and sum → context-aware output</li>
+            </ol>
+          </div>
         </section>
 
         <section>
@@ -156,85 +216,9 @@ digraph rnn {
           </p>
         </section>
 
-        <section>
-          <h3>What is \(d_k\)? Dimension of Keys</h3>
-          <p class="small">In multi-head attention, we split the model dimension across heads:</p>
-          <div class="highlight-box small">
-            \[
-              d_k = d_v = \frac{d_{model}}{n_{heads}}
-            \]
-          </div>
-          <ul class="small">
-            <li class="fragment"><strong>\(d_{model}\)</strong> = total embedding dimension (e.g., 512, 768, 1024)</li>
-            <li class="fragment"><strong>\(n_{heads}\)</strong> = number of attention heads (e.g., 8, 12, 16)</li>
-            <li class="fragment"><strong>\(d_k = d_v\)</strong> = dimension per head</li>
-          </ul>
-          <table class="small fragment">
-            <tr><th>Model</th><th>\(d_{model}\)</th><th>\(n_{heads}\)</th><th>\(d_k\)</th></tr>
-            <tr><td>Transformer (original)</td><td>512</td><td>8</td><td>64</td></tr>
-            <tr><td>BERT-base</td><td>768</td><td>12</td><td>64</td></tr>
-            <tr><td>GPT-2 small</td><td>768</td><td>12</td><td>64</td></tr>
-            <tr><td>GPT-3 (175B)</td><td>12288</td><td>96</td><td>128</td></tr>
-          </table>
-          <pre class="fragment"><code class="language-python"># In code:
-d_model = 768
-n_heads = 12
-d_k = d_model // n_heads  # = 64</code></pre>
-        </section>
-
-        <section>
-          <h3>How \(d_k\) is Used: Step by Step</h3>
-          <p class="small">Multi-head attention reshapes tensors to give each head its own \(d_k\)-dimensional subspace:</p>
-          <pre><code class="language-python"># 1. Start with input: (batch, seq_len, d_model)
-x.shape  # (32, 100, 768)
-
-# 2. Project to Q, K, V using linear layers
-Q = W_q(x)  # (32, 100, 768) — still full dimension
-
-# 3. Reshape: split d_model into (n_heads, d_k)
-Q = Q.view(batch, seq_len, n_heads, d_k)  # (32, 100, 12, 64)
-Q = Q.transpose(1, 2)                      # (32, 12, 100, 64)
-#         ↑ now each of 12 heads has 64-dim vectors
-
-# 4. Compute attention PER HEAD
-scores = Q @ K.transpose(-2, -1)  # (32, 12, 100, 100)
-scores = scores / math.sqrt(d_k)  # divide by √64 = 8
-
-# 5. Concatenate heads back
-output = output.transpose(1, 2).reshape(batch, seq_len, d_model)</code></pre>
-          <p class="small fragment">
-            <strong>Key insight:</strong> The \(\sqrt{d_k}\) scaling uses the <em>per-head</em> dimension (64), not the full model dimension (768).
-          </p>
-        </section>
-
-        <section>
-          <h3>Attention as Soft Dictionary Lookup</h3>
-          <p class="small">Think of attention like a fuzzy database query:</p>
-          <ul class="small">
-            <li class="fragment"><strong>Query (Q):</strong> "What am I looking for?" — current position's representation.</li>
-            <li class="fragment"><strong>Keys (K):</strong> "What does each position offer?" — representations of all positions.</li>
-            <li class="fragment"><strong>Values (V):</strong> "What information to retrieve?" — content at each position.</li>
-          </ul>
-          <p class="small fragment">
-            \[
-              \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
-            \]
-          </p>
-          <p class="small fragment">The \(\sqrt{d_k}\) scaling prevents dot products from becoming too large.</p>
-        </section>
-
-        <section>
-          <h3>Attention Formula Explained</h3>
-          <img src="assets/attention_formula_diagram.png" alt="Attention Formula Diagram" style="max-height: 400px;">
-          <div class="small">
-            <ul>
-              <li class="fragment"><strong>Step 1:</strong> Compute similarity scores: \(QK^\top\) (dot product of queries and keys)</li>
-              <li class="fragment"><strong>Step 2:</strong> Scale by \(\sqrt{d_k}\) to prevent gradient vanishing/exploding</li>
-              <li class="fragment"><strong>Step 3:</strong> Apply softmax to get attention weights (sum to 1)</li>
-              <li class="fragment"><strong>Step 4:</strong> Weight the values and sum to get context-aware representations</li>
-            </ul>
-          </div>
-        </section>
+        <!-- ========================================== -->
+        <!-- PART 3: SELF-ATTENTION                    -->
+        <!-- ========================================== -->
 
         <section>
           <h3>Self-Attention: Attending to Yourself</h3>
@@ -285,6 +269,16 @@ digraph selfattn {
           </div>
         </section>
 
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <h2>Part 2: Multi-Head Attention</h2>
+          <p>Multiple perspectives for richer representations</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 4: MULTI-HEAD ATTENTION              -->
+        <!-- ========================================== -->
+
         <section>
           <h3>Multi-Head Attention: The Intuition</h3>
           <p class="small">Why use multiple attention heads instead of one?</p>
@@ -302,6 +296,53 @@ digraph selfattn {
             </li>
             <li class="fragment"><strong>Solution:</strong> Run multiple attention operations in parallel, each learning different patterns.</li>
           </ul>
+        </section>
+
+        <section>
+          <h3>What is \(d_k\)? Dimension of Keys</h3>
+          <p class="small">In multi-head attention, we split the model dimension across heads:</p>
+          <div class="highlight-box small">
+            \[
+              d_k = d_v = \frac{d_{model}}{n_{heads}}
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>\(d_{model}\)</strong> = total embedding dimension (e.g., 512, 768, 1024)</li>
+            <li class="fragment"><strong>\(n_{heads}\)</strong> = number of attention heads (e.g., 8, 12, 16)</li>
+            <li class="fragment"><strong>\(d_k = d_v\)</strong> = dimension per head</li>
+          </ul>
+          <table class="small fragment">
+            <tr><th>Model</th><th>\(d_{model}\)</th><th>\(n_{heads}\)</th><th>\(d_k\)</th></tr>
+            <tr><td>Transformer (original)</td><td>512</td><td>8</td><td>64</td></tr>
+            <tr><td>BERT-base</td><td>768</td><td>12</td><td>64</td></tr>
+            <tr><td>GPT-2 small</td><td>768</td><td>12</td><td>64</td></tr>
+            <tr><td>GPT-3 (175B)</td><td>12288</td><td>96</td><td>128</td></tr>
+          </table>
+        </section>
+
+        <section>
+          <h3>How \(d_k\) is Used: Step by Step</h3>
+          <p class="small">Multi-head attention reshapes tensors to give each head its own \(d_k\)-dimensional subspace:</p>
+          <pre><code class="language-python"># 1. Start with input: (batch, seq_len, d_model)
+x.shape  # (32, 100, 768)
+
+# 2. Project to Q, K, V using linear layers
+Q = W_q(x)  # (32, 100, 768) — still full dimension
+
+# 3. Reshape: split d_model into (n_heads, d_k)
+Q = Q.view(batch, seq_len, n_heads, d_k)  # (32, 100, 12, 64)
+Q = Q.transpose(1, 2)                      # (32, 12, 100, 64)
+#         ↑ now each of 12 heads has 64-dim vectors
+
+# 4. Compute attention PER HEAD
+scores = Q @ K.transpose(-2, -1)  # (32, 12, 100, 100)
+scores = scores / math.sqrt(d_k)  # divide by √64 = 8
+
+# 5. Concatenate heads back
+output = output.transpose(1, 2).reshape(batch, seq_len, d_model)</code></pre>
+          <p class="small fragment">
+            <strong>Key insight:</strong> The \(\sqrt{d_k}\) scaling uses the <em>per-head</em> dimension (64), not the full model dimension (768).
+          </p>
         </section>
 
         <section>
@@ -465,6 +506,16 @@ mat  [░░█░░░░░]  → "sat"</pre>
           </div>
         </section>
 
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
+          <h2>Part 3: The Transformer Architecture</h2>
+          <p>Putting the pieces together</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 5: THE TRANSFORMER ARCHITECTURE      -->
+        <!-- ========================================== -->
+
         <section>
           <h3>The Transformer Architecture</h3>
           <p class="small">"Attention Is All You Need" (Vaswani et al., 2017) — no recurrence, just attention!</p>
@@ -517,6 +568,14 @@ digraph transformer {
         </section>
 
         <section>
+          <h3>Transformer Block Architecture</h3>
+          <img src="assets/transformer_blocks.png" alt="Transformer Blocks Diagram" style="max-height: 500px;">
+          <p class="small fragment">
+            <strong>Residual connections</strong> (green arrows) allow gradients to flow directly, enabling deep stacking of blocks.
+          </p>
+        </section>
+
+        <section>
           <h3>What is Layer Normalization?</h3>
           <p class="small">LayerNorm normalizes activations <em>across features</em> for each sample independently:</p>
           <div class="highlight-box small">
@@ -564,6 +623,69 @@ x = self.layer_norm1(x)      # normalize
 x = x + self.feed_forward(x) # residual
 x = self.layer_norm2(x)      # normalize</code></pre>
         </section>
+
+        <section>
+          <h3>The Feed-Forward Network (FFN)</h3>
+          <p class="small">Each Transformer block has a simple 2-layer MLP applied to each position:</p>
+          <div class="highlight-box small">
+            \[
+              \text{FFN}(\mathbf{x}) = \text{GELU}(\mathbf{x} W_1 + b_1) W_2 + b_2
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Expand:</strong> Project from \(d_{model}\) to \(4 \times d_{model}\) (typically).</li>
+            <li class="fragment"><strong>Non-linearity:</strong> GELU (or ReLU in original paper).</li>
+            <li class="fragment"><strong>Contract:</strong> Project back to \(d_{model}\).</li>
+            <li class="fragment"><strong>Applied independently:</strong> Same weights, but each token processed separately.</li>
+          </ul>
+          <pre class="fragment"><code class="language-python">class FeedForward(nn.Module):
+    def __init__(self, d_model, d_ff=2048):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, d_ff)
+        self.linear2 = nn.Linear(d_ff, d_model)
+        self.gelu = nn.GELU()
+
+    def forward(self, x):
+        return self.linear2(self.gelu(self.linear1(x)))</code></pre>
+        </section>
+
+        <section>
+          <h3>Positional Encoding</h3>
+          <p class="small">Self-attention is permutation invariant — we need to inject position information.</p>
+          <p class="small fragment">
+            \[
+              PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right), \quad
+              PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
+            \]
+          </p>
+          <ul class="small">
+            <li class="fragment">Sinusoidal encodings allow the model to generalize to longer sequences.</li>
+            <li class="fragment">Modern models often use <em>learned</em> positional embeddings instead.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Visualizing Positional Encoding</h3>
+          <img src="assets/positional_encoding.png" alt="Positional Encoding Visualization" style="max-height: 350px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Y-axis:</strong> Position in sequence (0 to 50)</li>
+              <li class="fragment"><strong>X-axis:</strong> Embedding dimensions (64 total)</li>
+              <li class="fragment"><strong>Pattern:</strong> Low dimensions oscillate quickly, high dimensions oscillate slowly</li>
+              <li class="fragment"><strong>Key insight:</strong> Each position has a unique "fingerprint" — the model learns to use these patterns to understand word order.</li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
+          <h2>Part 4: Cross-Attention &amp; Masking</h2>
+          <p>Connecting encoders to decoders, and preventing future leakage</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 6: CROSS-ATTENTION & MASKING         -->
+        <!-- ========================================== -->
 
         <section>
           <h3>Self-Attention vs Cross-Attention</h3>
@@ -620,56 +742,6 @@ digraph cross_attention {
             <li class="fragment">All encoder outputs provide Keys and Values.</li>
             <li class="fragment">Attention finds: "cat" should attend strongly to "chat".</li>
           </ul>
-        </section>
-
-        <section>
-          <h3>Transformer Block Architecture</h3>
-          <img src="assets/transformer_blocks.png" alt="Transformer Blocks Diagram" style="max-height: 500px;">
-          <p class="small fragment">
-            <strong>Residual connections</strong> (green arrows) allow gradients to flow directly, enabling deep stacking of blocks.
-          </p>
-        </section>
-
-        <section>
-          <h3>Attention Data Flow</h3>
-          <img src="assets/attention_flow.png" alt="Attention Flow Diagram" style="max-height: 400px;">
-          <div class="small">
-            <ol>
-              <li class="fragment">Project input X to Query, Key, Value matrices using learned weights</li>
-              <li class="fragment">Compute attention scores: \(QK^T\) measures similarity between all pairs</li>
-              <li class="fragment">Scale by \(\sqrt{d_k}\) to stabilize gradients</li>
-              <li class="fragment">Softmax normalizes scores to sum to 1 (attention weights)</li>
-              <li class="fragment">Weight values by attention and sum → context-aware output</li>
-            </ol>
-          </div>
-        </section>
-
-        <section>
-          <h3>Positional Encoding</h3>
-          <p class="small">Self-attention is permutation invariant — we need to inject position information.</p>
-          <p class="small fragment">
-            \[
-              PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right), \quad
-              PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
-            \]
-          </p>
-          <ul class="small">
-            <li class="fragment">Sinusoidal encodings allow the model to generalize to longer sequences.</li>
-            <li class="fragment">Modern models often use <em>learned</em> positional embeddings instead.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3>Visualizing Positional Encoding</h3>
-          <img src="assets/positional_encoding.png" alt="Positional Encoding Visualization" style="max-height: 350px;">
-          <div class="small">
-            <ul>
-              <li class="fragment"><strong>Y-axis:</strong> Position in sequence (0 to 50)</li>
-              <li class="fragment"><strong>X-axis:</strong> Embedding dimensions (64 total)</li>
-              <li class="fragment"><strong>Pattern:</strong> Low dimensions oscillate quickly, high dimensions oscillate slowly</li>
-              <li class="fragment"><strong>Key insight:</strong> Each position has a unique "fingerprint" — the model learns to use these patterns to understand word order.</li>
-            </ul>
-          </div>
         </section>
 
         <section>
@@ -843,31 +915,6 @@ Step 4: [START] The cat sat → predicts "on"
         </section>
 
         <section>
-          <h3>The Feed-Forward Network (FFN)</h3>
-          <p class="small">Each Transformer block has a simple 2-layer MLP applied to each position:</p>
-          <div class="highlight-box small">
-            \[
-              \text{FFN}(\mathbf{x}) = \text{GELU}(\mathbf{x} W_1 + b_1) W_2 + b_2
-            \]
-          </div>
-          <ul class="small">
-            <li class="fragment"><strong>Expand:</strong> Project from \(d_{model}\) to \(4 \times d_{model}\) (typically).</li>
-            <li class="fragment"><strong>Non-linearity:</strong> GELU (or ReLU in original paper).</li>
-            <li class="fragment"><strong>Contract:</strong> Project back to \(d_{model}\).</li>
-            <li class="fragment"><strong>Applied independently:</strong> Same weights, but each token processed separately.</li>
-          </ul>
-          <pre class="fragment"><code class="language-python">class FeedForward(nn.Module):
-    def __init__(self, d_model, d_ff=2048):
-        super().__init__()
-        self.linear1 = nn.Linear(d_model, d_ff)
-        self.linear2 = nn.Linear(d_ff, d_model)
-        self.gelu = nn.GELU()
-
-    def forward(self, x):
-        return self.linear2(self.gelu(self.linear1(x)))</code></pre>
-        </section>
-
-        <section>
           <h3>Why Transformers Won</h3>
           <table class="small">
             <tr>
@@ -888,6 +935,16 @@ Step 4: [START] The cat sat → predicts "on"
           </table>
           <p class="small fragment">This enabled the pre-training revolution: BERT, GPT, and beyond.</p>
         </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)">
+          <h2>Part 5: Pre-trained Models</h2>
+          <p>BERT, GPT, and the power of transfer learning</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 7: PRE-TRAINED MODELS                -->
+        <!-- ========================================== -->
 
         <section>
           <h3>Pre-trained Models: The Big Picture</h3>
@@ -1044,6 +1101,16 @@ digraph gpt_mask {
           </div>
         </section>
 
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #30cfd0 0%, #330867 100%)">
+          <h2>Part 6: Using Pre-trained Models</h2>
+          <p>From theory to practice with Hugging Face</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 8: USING PRE-TRAINED MODELS          -->
+        <!-- ========================================== -->
+
         <section>
           <h3>Using Pre-trained Models in Practice</h3>
           <p class="small">The Hugging Face 🤗 Transformers library makes this easy:</p>
@@ -1151,4 +1218,3 @@ digraph finetune {
     </script>
   </body>
 </html>
-
