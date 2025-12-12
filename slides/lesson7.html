@@ -1,0 +1,1154 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 7 — Transformers, Attention & Pre-trained Models</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
+    <style>
+      .code-small pre code { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; align-items: flex-start; }
+      .two-column > div { flex: 1; }
+      .small { font-size: 0.9em; }
+      .attention-matrix { font-family: monospace; font-size: 0.7em; }
+      .highlight-box { background: #e8f4f8; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <section>
+          <h2>Lesson 7: Transformers, Attention &amp; Pre-trained Models</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand the limitations of RNNs and why attention was invented.</li>
+            <li class="fragment">Explain self-attention and how Transformers process sequences in parallel.</li>
+            <li class="fragment">Compare BERT (bidirectional) vs GPT (autoregressive) architectures.</li>
+            <li class="fragment">Use pre-trained models for downstream NLP tasks.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Recap: From Embeddings to Sequences</h3>
+          <p class="small">In Lesson 6 we learned to map tokens → embeddings. But how do we model <em>order</em> and <em>context</em>?</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph sequence_problem {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  t1 [label="The"];
+  t2 [label="cat"];
+  t3 [label="sat"];
+  t4 [label="on"];
+  t5 [label="the"];
+  t6 [label="mat"];
+  q  [label="???"];
+
+  t1 -> t2 -> t3 -> t4 -> t5 -> t6 -> q [style=dashed];
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Mean pooling loses word order (e.g., "dog bites man" vs "man bites dog").</li>
+            <li class="fragment">We need models that understand <strong>sequential dependencies</strong>.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>RNNs &amp; LSTMs: The Sequential Approach</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">RNNs process tokens one at a time, maintaining a hidden state.</li>
+                <li class="fragment">LSTMs add gates to better capture long-range dependencies.</li>
+                <li class="fragment">Problem: sequential processing is <strong>slow</strong> (no parallelism).</li>
+                <li class="fragment">Problem: long sequences still cause gradient issues.</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph rnn {
+  rankdir=LR;
+  node [fontsize=10, shape=circle];
+
+  h0 [label="h₀"];
+  h1 [label="h₁"];
+  h2 [label="h₂"];
+  h3 [label="h₃"];
+  hn [label="h_n"];
+
+  x1 [label="x₁", shape=box];
+  x2 [label="x₂", shape=box];
+  x3 [label="x₃", shape=box];
+  xn [label="x_n", shape=box];
+
+  h0 -> h1 -> h2 -> h3;
+  h3 -> hn [style=dashed];
+  x1 -> h1;
+  x2 -> h2;
+  x3 -> h3;
+  xn -> hn;
+}
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>The Attention Intuition</h3>
+          <p class="small">Instead of compressing everything into one hidden state, let the model <strong>look back</strong> at all previous tokens.</p>
+          <div class="highlight-box small">
+            <strong>Key Idea:</strong> For each output position, compute a weighted combination of all input positions based on <em>relevance</em>.
+          </div>
+          <ul class="small">
+            <li class="fragment">"Attention" = learned soft lookup over a sequence.</li>
+            <li class="fragment">Originally designed for machine translation (Bahdanau et al., 2015).</li>
+            <li class="fragment">Allows focusing on relevant words regardless of distance.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Dot Product as Similarity Measure</h3>
+          <p class="small">Why do we use \(QK^\top\) to compute attention scores?</p>
+          <div class="highlight-box small">
+            <strong>Dot product</strong> measures how "aligned" two vectors are:
+            \[
+              \mathbf{a} \cdot \mathbf{b} = \|\mathbf{a}\| \|\mathbf{b}\| \cos(\theta)
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>High dot product:</strong> vectors point in similar directions → high similarity.</li>
+            <li class="fragment"><strong>Zero:</strong> orthogonal vectors → no relationship.</li>
+            <li class="fragment"><strong>Negative:</strong> opposite directions → dissimilar.</li>
+          </ul>
+          <p class="small fragment">
+            In attention: \(Q_i \cdot K_j\) measures how much position \(i\) should attend to position \(j\).
+          </p>
+        </section>
+
+        <section>
+          <h3>Why Scale by \(\sqrt{d_k}\)?</h3>
+          <p class="small">The scaling factor prevents numerical instability:</p>
+          <div class="two-column small">
+            <div>
+              <p><strong>Problem without scaling:</strong></p>
+              <ul>
+                <li class="fragment">If \(d_k\) is large (e.g., 512), dot products can be very large.</li>
+                <li class="fragment">Large values → softmax saturates → gradients vanish.</li>
+                <li class="fragment">Example: \(e^{100} \approx 10^{43}\) dominates everything else.</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>With scaling:</strong></p>
+              <ul>
+                <li class="fragment">Dividing by \(\sqrt{d_k}\) keeps values in a reasonable range.</li>
+                <li class="fragment">Softmax outputs remain smooth (not 0/1).</li>
+                <li class="fragment">Gradients flow properly during training.</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>Intuition:</strong> If Q and K entries are ~unit variance, their dot product has variance ~\(d_k\). Scaling restores unit variance.
+          </p>
+        </section>
+
+        <section>
+          <h3>What is \(d_k\)? Dimension of Keys</h3>
+          <p class="small">In multi-head attention, we split the model dimension across heads:</p>
+          <div class="highlight-box small">
+            \[
+              d_k = d_v = \frac{d_{model}}{n_{heads}}
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>\(d_{model}\)</strong> = total embedding dimension (e.g., 512, 768, 1024)</li>
+            <li class="fragment"><strong>\(n_{heads}\)</strong> = number of attention heads (e.g., 8, 12, 16)</li>
+            <li class="fragment"><strong>\(d_k = d_v\)</strong> = dimension per head</li>
+          </ul>
+          <table class="small fragment">
+            <tr><th>Model</th><th>\(d_{model}\)</th><th>\(n_{heads}\)</th><th>\(d_k\)</th></tr>
+            <tr><td>Transformer (original)</td><td>512</td><td>8</td><td>64</td></tr>
+            <tr><td>BERT-base</td><td>768</td><td>12</td><td>64</td></tr>
+            <tr><td>GPT-2 small</td><td>768</td><td>12</td><td>64</td></tr>
+            <tr><td>GPT-3 (175B)</td><td>12288</td><td>96</td><td>128</td></tr>
+          </table>
+          <pre class="fragment"><code class="language-python"># In code:
+d_model = 768
+n_heads = 12
+d_k = d_model // n_heads  # = 64</code></pre>
+        </section>
+
+        <section>
+          <h3>How \(d_k\) is Used: Step by Step</h3>
+          <p class="small">Multi-head attention reshapes tensors to give each head its own \(d_k\)-dimensional subspace:</p>
+          <pre><code class="language-python"># 1. Start with input: (batch, seq_len, d_model)
+x.shape  # (32, 100, 768)
+
+# 2. Project to Q, K, V using linear layers
+Q = W_q(x)  # (32, 100, 768) — still full dimension
+
+# 3. Reshape: split d_model into (n_heads, d_k)
+Q = Q.view(batch, seq_len, n_heads, d_k)  # (32, 100, 12, 64)
+Q = Q.transpose(1, 2)                      # (32, 12, 100, 64)
+#         ↑ now each of 12 heads has 64-dim vectors
+
+# 4. Compute attention PER HEAD
+scores = Q @ K.transpose(-2, -1)  # (32, 12, 100, 100)
+scores = scores / math.sqrt(d_k)  # divide by √64 = 8
+
+# 5. Concatenate heads back
+output = output.transpose(1, 2).reshape(batch, seq_len, d_model)</code></pre>
+          <p class="small fragment">
+            <strong>Key insight:</strong> The \(\sqrt{d_k}\) scaling uses the <em>per-head</em> dimension (64), not the full model dimension (768).
+          </p>
+        </section>
+
+        <section>
+          <h3>Attention as Soft Dictionary Lookup</h3>
+          <p class="small">Think of attention like a fuzzy database query:</p>
+          <ul class="small">
+            <li class="fragment"><strong>Query (Q):</strong> "What am I looking for?" — current position's representation.</li>
+            <li class="fragment"><strong>Keys (K):</strong> "What does each position offer?" — representations of all positions.</li>
+            <li class="fragment"><strong>Values (V):</strong> "What information to retrieve?" — content at each position.</li>
+          </ul>
+          <p class="small fragment">
+            \[
+              \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^\top}{\sqrt{d_k}}\right) V
+            \]
+          </p>
+          <p class="small fragment">The \(\sqrt{d_k}\) scaling prevents dot products from becoming too large.</p>
+        </section>
+
+        <section>
+          <h3>Attention Formula Explained</h3>
+          <img src="assets/attention_formula_diagram.png" alt="Attention Formula Diagram" style="max-height: 400px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Step 1:</strong> Compute similarity scores: \(QK^\top\) (dot product of queries and keys)</li>
+              <li class="fragment"><strong>Step 2:</strong> Scale by \(\sqrt{d_k}\) to prevent gradient vanishing/exploding</li>
+              <li class="fragment"><strong>Step 3:</strong> Apply softmax to get attention weights (sum to 1)</li>
+              <li class="fragment"><strong>Step 4:</strong> Weight the values and sum to get context-aware representations</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>Self-Attention: Attending to Yourself</h3>
+          <p class="small">In <strong>self-attention</strong>, Q, K, and V all come from the <em>same</em> sequence.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph selfattn {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  input [label="Input Embeddings\n[x₁, x₂, x₃, x₄]"];
+  wq [label="Wq"];
+  wk [label="Wk"];
+  wv [label="Wv"];
+  q [label="Queries (Q)"];
+  k [label="Keys (K)"];
+  v [label="Values (V)"];
+  attn [label="Attention Scores\nsoftmax(QKᵀ/√d)"];
+  out [label="Weighted Values\nContext vectors"];
+
+  input -> wq -> q;
+  input -> wk -> k;
+  input -> wv -> v;
+  q -> attn;
+  k -> attn;
+  attn -> out;
+  v -> out;
+}
+          </code></pre>
+          <p class="small fragment">Each token can attend to every other token — capturing long-range dependencies in one step!</p>
+        </section>
+
+        <section>
+          <h3>Visualizing Self-Attention</h3>
+          <div class="two-column">
+            <div>
+              <img src="assets/self_attention_heatmap.png" alt="Self-Attention Heatmap" style="max-height: 380px;">
+            </div>
+            <div class="small">
+              <p><strong>Reading the heatmap:</strong></p>
+              <ul>
+                <li class="fragment">Rows = queries (which word is "asking")</li>
+                <li class="fragment">Columns = keys (what it's attending to)</li>
+                <li class="fragment">Darker = higher attention weight</li>
+                <li class="fragment">Each row sums to 1 (softmax)</li>
+              </ul>
+              <p class="fragment">The model learns to focus on semantically related tokens — capturing context without recurrence!</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Multi-Head Attention: The Intuition</h3>
+          <p class="small">Why use multiple attention heads instead of one?</p>
+          <div class="highlight-box small">
+            <strong>Problem:</strong> A single attention operation can only compute one set of attention weights.
+            But words have <em>multiple</em> types of relationships!
+          </div>
+          <ul class="small">
+            <li class="fragment">"The <strong>cat</strong> that I saw yesterday <strong>was</strong> sleeping"
+              <ul>
+                <li>Syntactic: "cat" ↔ "was" (subject-verb agreement)</li>
+                <li>Semantic: "cat" ↔ "sleeping" (who is sleeping?)</li>
+                <li>Positional: "cat" ↔ nearby words</li>
+              </ul>
+            </li>
+            <li class="fragment"><strong>Solution:</strong> Run multiple attention operations in parallel, each learning different patterns.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>What is a "Head" Exactly?</h3>
+          <p class="small">Each head is an independent attention computation with its own learned projections:</p>
+          <div class="two-column small">
+            <div>
+              <p><strong>Each head has:</strong></p>
+              <ul>
+                <li class="fragment">Its own \(W_Q^{(i)}\), \(W_K^{(i)}\), \(W_V^{(i)}\) matrices</li>
+                <li class="fragment">Its own \(d_k\)-dimensional subspace</li>
+                <li class="fragment">Its own attention pattern to learn</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>Mathematically:</strong></p>
+              <div class="fragment">
+                \[
+                  \text{head}_i = \text{Attention}(Q W_Q^{(i)}, K W_K^{(i)}, V W_V^{(i)})
+                \]
+              </div>
+              <p class="fragment">Where \(W_Q^{(i)} \in \mathbb{R}^{d_{model} \times d_k}\)</p>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>Think of it as:</strong> Each head "looks at" the input from a different angle, like multiple experts examining the same data.
+          </p>
+        </section>
+
+        <section>
+          <h3>How Heads are Combined</h3>
+          <p class="small">After computing attention in parallel, heads are concatenated and projected:</p>
+          <div class="highlight-box small">
+            \[
+              \text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, \ldots, \text{head}_h) W_O
+            \]
+          </div>
+          <pre><code class="language-python"># Each head outputs: (batch, seq_len, d_k)
+head_outputs = [head(Q, K, V) for head in heads]  # list of 12 tensors
+
+# Concatenate along last dimension
+concat = torch.cat(head_outputs, dim=-1)  # (batch, seq_len, 12*64=768)
+
+# Final projection mixes information across heads
+output = self.W_o(concat)  # (batch, seq_len, 768)</code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>Concat:</strong> Each head contributes \(d_k\) dimensions → total \(n_{heads} \times d_k = d_{model}\)</li>
+            <li class="fragment"><strong>\(W_O\):</strong> Learns how to combine information from all heads</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>What Do Different Heads Learn?</h3>
+          <p class="small">Research has shown heads specialize in different linguistic phenomena:</p>
+          <table class="small">
+            <tr><th>Head Type</th><th>What It Learns</th><th>Example</th></tr>
+            <tr class="fragment">
+              <td><strong>Positional</strong></td>
+              <td>Attend to previous/next token</td>
+              <td>Bigram patterns, local context</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Syntactic</strong></td>
+              <td>Subject-verb, noun-adjective</td>
+              <td>"cats" → "are" (agreement)</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Coreference</strong></td>
+              <td>Pronouns to their referents</td>
+              <td>"it" → "the cat"</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Semantic</strong></td>
+              <td>Meaning-based relations</td>
+              <td>"doctor" → "hospital"</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Delimiter</strong></td>
+              <td>Attend to [CLS], [SEP], punctuation</td>
+              <td>Sentence boundaries</td>
+            </tr>
+          </table>
+          <p class="small fragment">
+            <em>Source:</em> <a href="https://arxiv.org/abs/1906.04341" target="_blank">Clark et al., "What Does BERT Look At?" (2019)</a>
+          </p>
+        </section>
+
+        <section>
+          <h3>Visualizing Head Specialization</h3>
+          <p class="small">Different heads in BERT attend to different patterns:</p>
+          <div class="two-column">
+            <div style="text-align: center;">
+              <p><strong>Head A: Positional</strong></p>
+              <pre class="small" style="font-size: 0.6em;">
+The  [███░░░░░]
+cat  [░███░░░░]
+sat  [░░███░░░]
+on   [░░░███░░]
+the  [░░░░███░]
+mat  [░░░░░███]</pre>
+              <p class="small">Attends to nearby tokens</p>
+            </div>
+            <div style="text-align: center;">
+              <p><strong>Head B: Syntactic</strong></p>
+              <pre class="small" style="font-size: 0.6em;">
+The  [░░░░░░░░]
+cat  [░░░░░░░█]  → "sat"
+sat  [░█░░░░░░]  → "cat"
+on   [░░░░░░░░]
+the  [░░░░░░░░]
+mat  [░░█░░░░░]  → "sat"</pre>
+              <p class="small">Subject-verb-object links</p>
+            </div>
+          </div>
+          <p class="small fragment">
+            Explore interactively: <a href="https://exbert.net/" target="_blank">exBERT</a> | 
+            <a href="https://github.com/jessevig/bertviz" target="_blank">BertViz</a>
+          </p>
+        </section>
+
+        <section>
+          <h3>Multi-Head Attention: Code</h3>
+          <pre class="code-small"><code class="language-python">class MultiHeadAttention(nn.Module):
+    def __init__(self, d_model, n_heads):
+        super().__init__()
+        self.n_heads = n_heads
+        self.d_k = d_model // n_heads
+        self.W_q = nn.Linear(d_model, d_model)
+        self.W_k = nn.Linear(d_model, d_model)
+        self.W_v = nn.Linear(d_model, d_model)
+        self.W_o = nn.Linear(d_model, d_model)
+
+    def forward(self, x):
+        B, T, C = x.shape
+        # Project and reshape: (B, T, C) → (B, n_heads, T, d_k)
+        Q = self.W_q(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        K = self.W_k(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        V = self.W_v(x).view(B, T, self.n_heads, self.d_k).transpose(1, 2)
+        
+        # Attention per head
+        scores = (Q @ K.transpose(-2, -1)) / math.sqrt(self.d_k)
+        attn = F.softmax(scores, dim=-1)
+        out = attn @ V  # (B, n_heads, T, d_k)
+        
+        # Concatenate and project
+        out = out.transpose(1, 2).reshape(B, T, C)
+        return self.W_o(out)</code></pre>
+        </section>
+
+        <section>
+          <h3>Multi-Head Attention Patterns</h3>
+          <img src="assets/multihead_attention.png" alt="Multi-Head Attention Patterns" style="max-height: 350px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Different heads, different patterns:</strong> Each head attends to different aspects of the input.</li>
+              <li class="fragment"><strong>Head 1</strong> might focus on syntactic relations (subject-verb)</li>
+              <li class="fragment"><strong>Head 2</strong> might capture semantic similarity</li>
+              <li class="fragment"><strong>Head 3</strong> might attend to positional patterns</li>
+            </ul>
+            <p class="fragment">By combining multiple perspectives, the model builds richer representations.</p>
+          </div>
+        </section>
+
+        <section>
+          <h3>The Transformer Architecture</h3>
+          <p class="small">"Attention Is All You Need" (Vaswani et al., 2017) — no recurrence, just attention!</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph transformer {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  input [label="Input Embedding\n+ Positional Encoding"];
+  enc1 [label="Encoder Block ×N\n(Self-Attention + FFN)"];
+  enc_out [label="Encoder Output"];
+
+  tgt [label="Target Embedding\n+ Positional Encoding"];
+  dec1 [label="Decoder Block ×N\n(Masked Self-Attn\n+ Cross-Attn + FFN)"];
+  output [label="Output Probabilities"];
+
+  input -> enc1 -> enc_out;
+  tgt -> dec1;
+  enc_out -> dec1 [label="Cross-Attention"];
+  dec1 -> output;
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Inside a Transformer Block</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Encoder Block</h4>
+              <ol>
+                <li class="fragment">Multi-Head Self-Attention</li>
+                <li class="fragment">Add &amp; LayerNorm (residual)</li>
+                <li class="fragment">Feed-Forward Network (2 layers)</li>
+                <li class="fragment">Add &amp; LayerNorm</li>
+              </ol>
+            </div>
+            <div>
+              <h4>Decoder Block</h4>
+              <ol>
+                <li class="fragment"><em>Masked</em> Multi-Head Self-Attention</li>
+                <li class="fragment">Add &amp; LayerNorm</li>
+                <li class="fragment">Cross-Attention (to encoder)</li>
+                <li class="fragment">Add &amp; LayerNorm</li>
+                <li class="fragment">Feed-Forward Network</li>
+                <li class="fragment">Add &amp; LayerNorm</li>
+              </ol>
+            </div>
+          </div>
+          <p class="small fragment"><strong>Key insight:</strong> Residual connections + LayerNorm enable very deep networks.</p>
+        </section>
+
+        <section>
+          <h3>What is Layer Normalization?</h3>
+          <p class="small">LayerNorm normalizes activations <em>across features</em> for each sample independently:</p>
+          <div class="highlight-box small">
+            \[
+              \text{LayerNorm}(\mathbf{x}) = \gamma \cdot \frac{\mathbf{x} - \mu}{\sigma + \epsilon} + \beta
+            \]
+            where \(\mu\) and \(\sigma\) are computed over the feature dimension (not batch).
+          </div>
+          <div class="two-column small">
+            <div>
+              <p><strong>Why LayerNorm (not BatchNorm)?</strong></p>
+              <ul>
+                <li class="fragment">Sequences have variable length.</li>
+                <li class="fragment">Works with batch size = 1 (inference).</li>
+                <li class="fragment">Each token normalized independently.</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>What it does:</strong></p>
+              <ul>
+                <li class="fragment">Stabilizes training (prevents exploding activations).</li>
+                <li class="fragment">Reduces internal covariate shift.</li>
+                <li class="fragment">\(\gamma, \beta\) are learnable scale/shift parameters.</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Residual Connections Revisited</h3>
+          <p class="small">You've seen these in ResNets (Lesson 4). Same idea here!</p>
+          <div class="highlight-box small">
+            \[
+              \text{output} = \text{LayerNorm}(\mathbf{x} + \text{SubLayer}(\mathbf{x}))
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Skip connection:</strong> Add input directly to sublayer output.</li>
+            <li class="fragment"><strong>Why:</strong> Gradients flow through the "+" unchanged → deep networks train.</li>
+            <li class="fragment"><strong>Benefit:</strong> Sublayer only learns the <em>residual</em> (what to add/change).</li>
+          </ul>
+          <pre class="fragment"><code class="language-python"># PyTorch pattern
+x = x + self.attention(x)    # residual
+x = self.layer_norm1(x)      # normalize
+x = x + self.feed_forward(x) # residual
+x = self.layer_norm2(x)      # normalize</code></pre>
+        </section>
+
+        <section>
+          <h3>Self-Attention vs Cross-Attention</h3>
+          <p class="small">Two types of attention in Transformers:</p>
+          <div class="two-column small">
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px;">
+              <h4>Self-Attention</h4>
+              <ul>
+                <li class="fragment">Q, K, V all come from the <strong>same</strong> sequence.</li>
+                <li class="fragment">Each token attends to all other tokens in its own sequence.</li>
+                <li class="fragment">Used in: BERT (encoder), GPT (decoder).</li>
+              </ul>
+              <p class="fragment"><em>Example:</em> "The cat sat" — each word looks at all words.</p>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Cross-Attention</h4>
+              <ul>
+                <li class="fragment">Q comes from <strong>one</strong> sequence (decoder).</li>
+                <li class="fragment">K, V come from a <strong>different</strong> sequence (encoder output).</li>
+                <li class="fragment">Used in: Encoder-Decoder Transformers (translation).</li>
+              </ul>
+              <p class="fragment"><em>Example:</em> Translating "Le chat" → decoder queries encoder.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Cross-Attention in Translation</h3>
+          <pre><code class="language-dot" data-graphviz>
+digraph cross_attention {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  subgraph cluster_encoder {
+    label="Encoder (French)";
+    style=filled; fillcolor="#e3f2fd";
+    e1 [label="Le"]; e2 [label="chat"]; e3 [label="dort"];
+  }
+
+  subgraph cluster_decoder {
+    label="Decoder (English)";
+    style=filled; fillcolor="#fff3e0";
+    d1 [label="The"]; d2 [label="cat"]; d3 [label="sleeps"];
+  }
+
+  e1 -> d2 [color=blue, style=dashed, label="K,V"];
+  e2 -> d2 [color=blue, style=dashed];
+  e3 -> d2 [color=blue, style=dashed];
+  d2 -> d2 [label="Q", color=orange];
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Decoder position "cat" generates Query.</li>
+            <li class="fragment">All encoder outputs provide Keys and Values.</li>
+            <li class="fragment">Attention finds: "cat" should attend strongly to "chat".</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Transformer Block Architecture</h3>
+          <img src="assets/transformer_blocks.png" alt="Transformer Blocks Diagram" style="max-height: 500px;">
+          <p class="small fragment">
+            <strong>Residual connections</strong> (green arrows) allow gradients to flow directly, enabling deep stacking of blocks.
+          </p>
+        </section>
+
+        <section>
+          <h3>Attention Data Flow</h3>
+          <img src="assets/attention_flow.png" alt="Attention Flow Diagram" style="max-height: 400px;">
+          <div class="small">
+            <ol>
+              <li class="fragment">Project input X to Query, Key, Value matrices using learned weights</li>
+              <li class="fragment">Compute attention scores: \(QK^T\) measures similarity between all pairs</li>
+              <li class="fragment">Scale by \(\sqrt{d_k}\) to stabilize gradients</li>
+              <li class="fragment">Softmax normalizes scores to sum to 1 (attention weights)</li>
+              <li class="fragment">Weight values by attention and sum → context-aware output</li>
+            </ol>
+          </div>
+        </section>
+
+        <section>
+          <h3>Positional Encoding</h3>
+          <p class="small">Self-attention is permutation invariant — we need to inject position information.</p>
+          <p class="small fragment">
+            \[
+              PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right), \quad
+              PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
+            \]
+          </p>
+          <ul class="small">
+            <li class="fragment">Sinusoidal encodings allow the model to generalize to longer sequences.</li>
+            <li class="fragment">Modern models often use <em>learned</em> positional embeddings instead.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Visualizing Positional Encoding</h3>
+          <img src="assets/positional_encoding.png" alt="Positional Encoding Visualization" style="max-height: 350px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Y-axis:</strong> Position in sequence (0 to 50)</li>
+              <li class="fragment"><strong>X-axis:</strong> Embedding dimensions (64 total)</li>
+              <li class="fragment"><strong>Pattern:</strong> Low dimensions oscillate quickly, high dimensions oscillate slowly</li>
+              <li class="fragment"><strong>Key insight:</strong> Each position has a unique "fingerprint" — the model learns to use these patterns to understand word order.</li>
+            </ul>
+          </div>
+        </section>
+
+        <section>
+          <h3>What is Masking?</h3>
+          <p class="small">Masking prevents attention to certain positions:</p>
+          <div class="two-column small">
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 8px;">
+              <h4>Padding Mask</h4>
+              <ul>
+                <li class="fragment">Ignore &lt;PAD&gt; tokens in variable-length sequences.</li>
+                <li class="fragment">Set attention scores to \(-\infty\) for padding positions.</li>
+                <li class="fragment">After softmax: zero attention weight.</li>
+              </ul>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Causal (Look-ahead) Mask</h4>
+              <ul>
+                <li class="fragment">Prevent seeing future tokens during generation.</li>
+                <li class="fragment">Lower-triangular mask: position \(i\) sees only \(j \leq i\).</li>
+                <li class="fragment">Used in GPT and decoder self-attention.</li>
+              </ul>
+            </div>
+          </div>
+          <pre class="fragment"><code class="language-python"># Causal mask: lower triangular
+mask = torch.tril(torch.ones(seq_len, seq_len))
+# Apply before softmax
+scores = scores.masked_fill(mask == 0, float('-inf'))</code></pre>
+        </section>
+
+        <section>
+          <h3>Why Does the Decoder Need Masking?</h3>
+          <p class="small">During training, we feed the entire target sequence at once. But we must prevent "cheating"!</p>
+          <div class="highlight-box small">
+            <strong>Problem:</strong> When predicting word 3, the model shouldn't see words 4, 5, 6...
+          </div>
+          <div class="two-column small">
+            <div>
+              <p><strong>Without mask (cheating!):</strong></p>
+              <pre style="font-size: 0.7em;">
+Input:  "The cat sat on the ___"
+Target: "The cat sat on the mat"
+
+Predicting "sat":
+  Can see: The, cat, sat, on, the, mat
+  ❌ Knows answer before predicting!</pre>
+            </div>
+            <div>
+              <p><strong>With causal mask:</strong></p>
+              <pre style="font-size: 0.7em;">
+Input:  "The cat sat on the ___"
+Target: "The cat sat on the mat"
+
+Predicting "sat":
+  Can see: The, cat
+  ✅ Must predict from context only!</pre>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>Key insight:</strong> Masking simulates autoregressive generation during parallel training.
+          </p>
+        </section>
+
+        <section>
+          <h3>Causal Mask: Step by Step</h3>
+          <p class="small">The mask is a lower-triangular matrix that blocks future positions:</p>
+          <div class="two-column">
+            <div style="text-align: center;">
+              <p><strong>The Mask Matrix</strong></p>
+              <pre style="font-size: 0.7em;">
+        The  cat  sat  on  mat
+The   [  1    0    0   0    0 ]
+cat   [  1    1    0   0    0 ]
+sat   [  1    1    1   0    0 ]
+on    [  1    1    1   1    0 ]
+mat   [  1    1    1   1    1 ]</pre>
+              <p class="small">1 = can attend, 0 = blocked</p>
+            </div>
+            <div style="text-align: center;">
+              <p><strong>After Masking Scores</strong></p>
+              <pre style="font-size: 0.7em;">
+        The  cat  sat  on  mat
+The   [ 0.8  -∞   -∞  -∞   -∞ ]
+cat   [ 0.3  0.5  -∞  -∞   -∞ ]
+sat   [ 0.1  0.4  0.3 -∞   -∞ ]
+on    [ 0.1  0.2  0.3 0.2  -∞ ]
+mat   [ 0.1  0.2  0.2 0.1  0.3]</pre>
+              <p class="small">-∞ → 0 after softmax</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>How \(-\infty\) Masking Works</h3>
+          <p class="small">Setting scores to \(-\infty\) makes them vanish after softmax:</p>
+          <div class="highlight-box small">
+            \[
+              \text{softmax}([2.0, 1.0, -\infty, -\infty]) = [0.73, 0.27, 0.00, 0.00]
+            \]
+          </div>
+          <pre><code class="language-python"># Before masking: attention scores
+scores = [[0.8, 0.5, 0.3, 0.2],   # position 0 attends to all
+          [0.3, 0.9, 0.4, 0.1],   # position 1 attends to all
+          [0.2, 0.4, 0.7, 0.3],   # position 2 attends to all
+          [0.1, 0.2, 0.3, 0.8]]   # position 3 attends to all
+
+# Create causal mask
+mask = torch.tril(torch.ones(4, 4))
+# [[1, 0, 0, 0],
+#  [1, 1, 0, 0],
+#  [1, 1, 1, 0],
+#  [1, 1, 1, 1]]
+
+# Apply mask: where mask=0, set score to -inf
+scores = scores.masked_fill(mask == 0, float('-inf'))
+
+# After softmax: future positions get 0 weight
+weights = F.softmax(scores, dim=-1)</code></pre>
+        </section>
+
+        <section>
+          <h3>Masked Decoder: Training vs Inference</h3>
+          <div class="two-column small">
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px;">
+              <h4>Training (Parallel)</h4>
+              <ul>
+                <li class="fragment">Feed entire target sequence at once.</li>
+                <li class="fragment">Apply causal mask to prevent cheating.</li>
+                <li class="fragment">Compute loss for all positions in parallel.</li>
+                <li class="fragment">Fast! One forward pass predicts all tokens.</li>
+              </ul>
+              <pre class="fragment" style="font-size: 0.7em;"><code class="language-python"># All predictions at once
+logits = model(target_sequence)
+loss = F.cross_entropy(logits, target)</code></pre>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Inference (Sequential)</h4>
+              <ul>
+                <li class="fragment">Start with just [START] token.</li>
+                <li class="fragment">Predict next token, append to sequence.</li>
+                <li class="fragment">Repeat until [END] or max length.</li>
+                <li class="fragment">Slow! One token per forward pass.</li>
+              </ul>
+              <pre class="fragment" style="font-size: 0.7em;"><code class="language-python"># Generate one token at a time
+while not done:
+    next_token = model(sequence).argmax()
+    sequence.append(next_token)</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Visualizing Autoregressive Generation</h3>
+          <p class="small">GPT generates text one token at a time, always looking only left:</p>
+          <pre style="font-size: 0.8em;">
+Step 1: [START] → predicts "The"
+        Sees: [START]
+        
+Step 2: [START] The → predicts "cat"  
+        Sees: [START], The
+        
+Step 3: [START] The cat → predicts "sat"
+        Sees: [START], The, cat
+        
+Step 4: [START] The cat sat → predicts "on"
+        Sees: [START], The, cat, sat
+        
+...continues until [END] token or max length</pre>
+          <p class="small fragment">
+            <strong>The causal mask during training simulates this sequential process in parallel!</strong>
+          </p>
+        </section>
+
+        <section>
+          <h3>The Feed-Forward Network (FFN)</h3>
+          <p class="small">Each Transformer block has a simple 2-layer MLP applied to each position:</p>
+          <div class="highlight-box small">
+            \[
+              \text{FFN}(\mathbf{x}) = \text{GELU}(\mathbf{x} W_1 + b_1) W_2 + b_2
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Expand:</strong> Project from \(d_{model}\) to \(4 \times d_{model}\) (typically).</li>
+            <li class="fragment"><strong>Non-linearity:</strong> GELU (or ReLU in original paper).</li>
+            <li class="fragment"><strong>Contract:</strong> Project back to \(d_{model}\).</li>
+            <li class="fragment"><strong>Applied independently:</strong> Same weights, but each token processed separately.</li>
+          </ul>
+          <pre class="fragment"><code class="language-python">class FeedForward(nn.Module):
+    def __init__(self, d_model, d_ff=2048):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, d_ff)
+        self.linear2 = nn.Linear(d_ff, d_model)
+        self.gelu = nn.GELU()
+
+    def forward(self, x):
+        return self.linear2(self.gelu(self.linear1(x)))</code></pre>
+        </section>
+
+        <section>
+          <h3>Why Transformers Won</h3>
+          <table class="small">
+            <tr>
+              <th>Feature</th><th>RNN/LSTM</th><th>Transformer</th>
+            </tr>
+            <tr class="fragment">
+              <td>Parallelizable</td><td>❌ Sequential</td><td>✅ Fully parallel</td>
+            </tr>
+            <tr class="fragment">
+              <td>Long-range deps</td><td>Difficult</td><td>Direct attention</td>
+            </tr>
+            <tr class="fragment">
+              <td>Training speed</td><td>Slow</td><td>Fast on GPUs</td>
+            </tr>
+            <tr class="fragment">
+              <td>Scalability</td><td>Limited</td><td>Scales to billions of params</td>
+            </tr>
+          </table>
+          <p class="small fragment">This enabled the pre-training revolution: BERT, GPT, and beyond.</p>
+        </section>
+
+        <section>
+          <h3>Pre-trained Models: The Big Picture</h3>
+          <p class="small">Train once on massive text data, then fine-tune for specific tasks.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph pretrain {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  corpus [label="Huge Text Corpus\n(Books, Web, Wikipedia)"];
+  pretrain [label="Pre-training\n(Self-supervised)"];
+  model [label="Pre-trained\nTransformer"];
+  finetune [label="Fine-tuning\n(Task-specific)"];
+  tasks [label="Downstream Tasks\n(QA, NER, Sentiment...)"];
+
+  corpus -> pretrain -> model -> finetune -> tasks;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>Self-supervised:</strong> no manual labels needed for pre-training.</li>
+            <li class="fragment"><strong>Transfer learning:</strong> knowledge transfers to new tasks.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>BERT: Bidirectional Encoder</h3>
+          <p class="small"><strong>B</strong>idirectional <strong>E</strong>ncoder <strong>R</strong>epresentations from <strong>T</strong>ransformers (Devlin et al., 2018)</p>
+          <div class="two-column small">
+            <div>
+              <h4>Architecture</h4>
+              <ul>
+                <li class="fragment">Encoder-only Transformer (no decoder).</li>
+                <li class="fragment">Sees the <em>entire</em> sentence at once.</li>
+                <li class="fragment">Base: 12 layers, 768 dim, 110M params.</li>
+                <li class="fragment">Large: 24 layers, 1024 dim, 340M params.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Pre-training Tasks</h4>
+              <ul>
+                <li class="fragment"><strong>MLM:</strong> Masked Language Modeling — predict [MASK] tokens.</li>
+                <li class="fragment"><strong>NSP:</strong> Next Sentence Prediction — is sentence B after A?</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>BERT: Masked Language Modeling</h3>
+          <p class="small">Randomly mask 15% of tokens and predict them from context.</p>
+          <div class="highlight-box small">
+            <strong>Input:</strong> "The [MASK] sat on the mat"<br>
+            <strong>Target:</strong> "cat"
+          </div>
+          <ul class="small">
+            <li class="fragment">Unlike left-to-right LMs, BERT sees both left <em>and</em> right context.</li>
+            <li class="fragment">This bidirectionality is key for understanding tasks (QA, NER, classification).</li>
+          </ul>
+          <pre class="code-small fragment"><code class="language-python">from transformers import BertTokenizer, BertForMaskedLM
+
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+model = BertForMaskedLM.from_pretrained('bert-base-uncased')
+
+inputs = tokenizer("The [MASK] sat on the mat.", return_tensors="pt")
+outputs = model(**inputs)
+# Top prediction: "cat"</code></pre>
+        </section>
+
+        <section>
+          <h3>GPT: Autoregressive Decoder</h3>
+          <p class="small"><strong>G</strong>enerative <strong>P</strong>re-trained <strong>T</strong>ransformer (Radford et al., 2018)</p>
+          <div class="two-column small">
+            <div>
+              <h4>Architecture</h4>
+              <ul>
+                <li class="fragment">Decoder-only Transformer.</li>
+                <li class="fragment">Uses <em>causal masking</em> — can only see previous tokens.</li>
+                <li class="fragment">GPT-2: 1.5B params; GPT-3: 175B params.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Pre-training Task</h4>
+              <ul>
+                <li class="fragment">Next Token Prediction (autoregressive LM).</li>
+                <li class="fragment">Given "The cat sat on the", predict "mat".</li>
+              </ul>
+            </div>
+          </div>
+          <pre><code class="language-dot" data-graphviz>
+digraph gpt_mask {
+  rankdir=LR;
+  node [fontsize=10, shape=box];
+
+  t1 [label="The"];
+  t2 [label="cat"];
+  t3 [label="sat"];
+  t4 [label="on"];
+  t5 [label="the"];
+  t6 [label="???"];
+
+  t1 -> t2 -> t3 -> t4 -> t5 -> t6;
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Causal (Masked) Attention in GPT</h3>
+          <div class="two-column">
+            <div>
+              <img src="assets/causal_attention_heatmap.png" alt="Causal Attention Heatmap" style="max-height: 380px;">
+            </div>
+            <div class="small">
+              <p><strong>Key difference from BERT:</strong></p>
+              <ul>
+                <li class="fragment"><strong>Lower triangular pattern:</strong> Each token can only attend to itself and previous tokens</li>
+                <li class="fragment"><strong>No future leakage:</strong> Token at position 3 cannot see tokens 4, 5, 6...</li>
+                <li class="fragment"><strong>Why?</strong> During generation, future tokens don't exist yet!</li>
+              </ul>
+              <p class="fragment">This is implemented by masking future positions with \(-\infty\) before softmax.</p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>BERT vs GPT: Key Differences</h3>
+          <table class="small">
+            <tr>
+              <th></th><th>BERT</th><th>GPT</th>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Architecture</strong></td><td>Encoder-only</td><td>Decoder-only</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Context</strong></td><td>Bidirectional</td><td>Left-to-right (causal)</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Pre-training</strong></td><td>Masked LM + NSP</td><td>Next token prediction</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Best for</strong></td><td>Understanding (QA, NER, classification)</td><td>Generation (text completion, chat)</td>
+            </tr>
+          </table>
+          <p class="small fragment">
+            <strong>Rule of thumb:</strong> BERT for analysis, GPT for generation.
+          </p>
+        </section>
+
+        <section>
+          <h3>BERT vs GPT: Visual Comparison</h3>
+          <img src="assets/bert_vs_gpt_comparison.png" alt="BERT vs GPT Comparison" style="max-height: 450px;">
+          <div class="small">
+            <p class="fragment"><strong>BERT (left):</strong> Every token attends to every other token — full bidirectional context for understanding.</p>
+            <p class="fragment"><strong>GPT (right):</strong> Each token only sees previous tokens — perfect for text generation.</p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Using Pre-trained Models in Practice</h3>
+          <p class="small">The Hugging Face 🤗 Transformers library makes this easy:</p>
+          <pre class="code-small"><code class="language-python">from transformers import pipeline
+
+# Sentiment analysis with BERT-based model
+classifier = pipeline("sentiment-analysis")
+result = classifier("I absolutely loved this movie!")
+# [{'label': 'POSITIVE', 'score': 0.9998}]
+
+# Text generation with GPT-2
+generator = pipeline("text-generation", model="gpt2")
+text = generator("Once upon a time", max_length=50)
+# Generates a continuation...</code></pre>
+          <p class="small fragment">No need to train from scratch — leverage billions of parameters!</p>
+        </section>
+
+        <section>
+          <h3>Fine-tuning for Your Task</h3>
+          <p class="small">Add a task-specific head and train on your labeled data:</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph finetune {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  input [label="Your Task Data\n(e.g., reviews + labels)"];
+  bert [label="Pre-trained BERT\n(frozen or fine-tuned)"];
+  head [label="Classification Head\n(new Linear layer)"];
+  output [label="Predictions\n(positive/negative)"];
+
+  input -> bert -> head -> output;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Freeze BERT and train only the head (feature extraction).</li>
+            <li class="fragment">Or fine-tune everything with a small learning rate.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Interactive Demos &amp; Resources</h3>
+          <p class="small">Explore how models attend to different words:</p>
+          <ul class="small">
+            <li class="fragment"><a href="https://exbert.net/" target="_blank">exBERT</a> — Visualize BERT attention heads interactively.</li>
+            <li class="fragment"><a href="https://www.bertviz.com/" target="_blank">BertViz</a> — Interactive attention visualization tool.</li>
+            <li class="fragment"><a href="https://jalammar.github.io/illustrated-transformer/" target="_blank">The Illustrated Transformer</a> — Jay Alammar's visual guide.</li>
+            <li class="fragment"><a href="https://lilianweng.github.io/posts/2018-06-24-attention/" target="_blank">Attention? Attention!</a> — Lilian Weng's comprehensive deep dive.</li>
+          </ul>
+          <p class="small fragment">
+            <strong>Try:</strong> Type a sentence and observe which words attend to which.
+          </p>
+        </section>
+
+        <section>
+          <h3>Beyond BERT &amp; GPT</h3>
+          <ul class="small">
+            <li class="fragment"><strong>RoBERTa:</strong> BERT with better training (no NSP, more data).</li>
+            <li class="fragment"><strong>DistilBERT:</strong> 60% smaller, 95% performance — via knowledge distillation.</li>
+            <li class="fragment"><strong>T5:</strong> Text-to-Text Transfer Transformer — everything is text generation.</li>
+            <li class="fragment"><strong>GPT-4, Claude, Gemini:</strong> Large language models at scale.</li>
+            <li class="fragment"><strong>LLaMA, Mistral:</strong> Open-weight models for research.</li>
+          </ul>
+          <p class="small fragment">The field moves fast — but the fundamentals (attention, pre-training) remain the same.</p>
+        </section>
+
+        <section>
+          <h3>Hands-On / Homework Ideas</h3>
+          <ul class="small">
+            <li class="fragment">Use Hugging Face pipelines for sentiment analysis on custom text.</li>
+            <li class="fragment">Fine-tune a small BERT model on a classification dataset (e.g., IMDB).</li>
+            <li class="fragment">Experiment with GPT-2 text generation — try different prompts.</li>
+            <li class="fragment">Visualize attention patterns using exBERT or BertViz.</li>
+            <li class="fragment">Compare predictions from BERT vs GPT on the same input.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Summary</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Attention</strong> allows models to focus on relevant parts of a sequence.</li>
+            <li class="fragment"><strong>Transformers</strong> use self-attention for parallel, efficient processing.</li>
+            <li class="fragment"><strong>BERT</strong> (bidirectional) excels at understanding tasks.</li>
+            <li class="fragment"><strong>GPT</strong> (autoregressive) excels at text generation.</li>
+            <li class="fragment"><strong>Pre-trained models</strong> transfer knowledge to downstream tasks with minimal fine-tuning.</li>
+          </ul>
+          <p class="small fragment">
+            <strong>Next:</strong> Multi-modal AI — combining vision and language (CLIP, image captioning).
+          </p>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
+    <script>
+      initializeSlides({
+        width: 1536,
+        height: 864,
+      });
+    </script>
+  </body>
+</html>
+

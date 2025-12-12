@@ -120,6 +120,31 @@ Additional resources (used in Lesson 3 slides):
 * Inspect nearest neighbors in your learned embedding space (e.g., around “good”, “bad”, “great”, “terrible”) and briefly describe what you see.
 * Optional: train a tiny Skip-Gram or CBOW model on your corpus and compare its nearest neighbors to those from pretrained GloVe/Word2Vec.
 
+***Lesson 7:***
+* Recap: From embeddings to sequences — why order matters.
+* RNNs & LSTMs: sequential processing and its limitations.
+* The Attention Mechanism: intuition as a "soft dictionary lookup" (Query, Key, Value).
+* Self-Attention: attending to yourself — capturing long-range dependencies in one step.
+* Multi-Head Attention: multiple heads for different relationship types.
+* The Transformer Architecture: encoder-decoder blocks, positional encoding, LayerNorm + residuals.
+* BERT (Bidirectional Encoder): Masked Language Modeling, understanding context from both sides.
+* GPT (Autoregressive Decoder): next-token prediction, causal masking, text generation.
+* BERT vs GPT: when to use which (understanding vs generation tasks).
+* Using pre-trained models with Hugging Face Transformers (pipelines for sentiment, fill-mask, generation).
+
+**Hands-on / Notebook:**
+👉 Work through `notebooks/lesson7_transformers_attention.ipynb` to implement self-attention from scratch, visualize attention weights, and experiment with pre-trained BERT and GPT models using Hugging Face.
+
+**Interactive Demos:**
+* [exBERT](https://exbert.net/) — Visualize BERT attention heads.
+* [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/) — Best visual guide to Transformers.
+
+***Lesson 7 Homework:***
+* Use Hugging Face pipelines to perform sentiment analysis on a custom set of texts.
+* Experiment with different prompts for GPT-2 text generation and analyze how prompt wording affects outputs.
+* Fine-tune a small BERT model (e.g., DistilBERT) on a classification task using the Hugging Face Trainer.
+* Visualize attention patterns from different layers and heads — describe what different heads seem to focus on.
+
 ---
 
 ### **Module 5: Multi-Modal AI — Seeing + Reading Together**
@@ -183,6 +208,7 @@ Additional resources (used in Lesson 3 slides):
   - `slides/lesson4.html` — Lesson 4: Data Augmentation, Transfer Learning & CNN Architectures (data augmentation, intro transfer learning with a pre-trained CNN, LeNet → AlexNet → VGG → Inception → ResNet, and object tracking context)
   - `slides/lesson5.html` — Lesson 5: Variational Autoencoders & Latent PCA (convolutional VAE for faces, β-ELBO loss, KL divergence, latent PCA controls, and perceptual vs MSE reconstruction losses)
   - `slides/lesson6.html` — Lesson 6: NLP — From Words to Embeddings (tokenization, vocabularies, embeddings, Word2Vec/CBOW/Skip-gram intuition, and a simple sentiment classifier)
+  - `slides/lesson7.html` — Lesson 7: Transformers, Attention & Pre-trained Models (self-attention, multi-head attention, Transformer architecture, BERT, GPT, and using pre-trained models)
 
 ---
 
