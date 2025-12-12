@@ -650,18 +650,180 @@ x = self.layer_norm2(x)      # normalize</code></pre>
         </section>
 
         <section>
-          <h3>Positional Encoding</h3>
-          <p class="small">Self-attention is permutation invariant — we need to inject position information.</p>
+          <h3>From Text to Attention: The Full Pipeline</h3>
+          <p class="small">Let's trace how raw text becomes input for attention:</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph pipeline {
+  rankdir=LR;
+  node [fontsize=10, shape=box, style=rounded];
+  
+  text [label="Raw Text\n\"The cat sat\""];
+  tok [label="Tokenizer"];
+  ids [label="Token IDs\n[101, 1996, 4937, 2068]"];
+  emb [label="Embedding\nLookup"];
+  vecs [label="Token Vectors\n(seq, d_model)"];
+  pe [label="+ Positional\nEncoding"];
+  input [label="Transformer\nInput"];
+  attn [label="Self-Attention"];
+  
+  text -> tok -> ids -> emb -> vecs -> pe -> input -> attn;
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Step 1: Tokenization</h3>
+          <p class="small">Convert raw text into a sequence of token IDs:</p>
+          <pre><code class="language-python"># Example with BERT tokenizer
+from transformers import BertTokenizer
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+text = "The cat sat on the mat"
+tokens = tokenizer.tokenize(text)
+# ['the', 'cat', 'sat', 'on', 'the', 'mat']
+
+token_ids = tokenizer.encode(text, add_special_tokens=True)
+# [101, 1996, 4937, 2068, 2006, 1996, 13523, 102]
+#  ↑                                          ↑
+# [CLS]                                     [SEP]</code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>Vocabulary:</strong> Maps each token to a unique integer ID</li>
+            <li class="fragment"><strong>Special tokens:</strong> [CLS]=101, [SEP]=102 for BERT</li>
+            <li class="fragment"><strong>Subword tokenization:</strong> Handles unknown words by splitting</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Step 2: Token Embeddings</h3>
+          <p class="small">Look up each token ID in a learned embedding matrix:</p>
+          <div class="highlight-box small">
+            \[
+              \mathbf{E} \in \mathbb{R}^{|V| \times d_{model}}, \quad
+              \mathbf{x}_i = \mathbf{E}[\text{token\_id}_i]
+            \]
+          </div>
+          <pre><code class="language-python"># Token IDs → Embeddings
+token_ids = [101, 1996, 4937, 2068, 2006, 1996, 13523, 102]
+#             ↓     ↓     ↓     ↓     ↓     ↓      ↓     ↓
+
+embedding = nn.Embedding(vocab_size=30522, embedding_dim=768)
+token_embeddings = embedding(torch.tensor(token_ids))
+# Shape: (8, 768) — 8 tokens, each is a 768-dim vector
+
+# Conceptually:
+# [CLS] → [0.12, -0.34, 0.56, ..., 0.78]  # 768 dims
+# "the" → [0.23, 0.45, -0.12, ..., 0.91]
+# "cat" → [-0.11, 0.67, 0.23, ..., 0.34]
+# ...</code></pre>
+          <p class="small fragment">Each token is now a dense vector in a learned semantic space!</p>
+        </section>
+
+        <section>
+          <h3>Step 3: Add Positional Encoding</h3>
+          <p class="small">Embeddings alone don't know word order. We add position information:</p>
+          <div class="highlight-box small">
+            \[
+              \mathbf{z}_i = \mathbf{x}_i + \mathbf{PE}_i
+            \]
+            where \(\mathbf{x}_i\) is the token embedding and \(\mathbf{PE}_i\) is the positional encoding for position \(i\).
+          </div>
+          <pre><code class="language-python"># Sinusoidal positional encoding
+def get_positional_encoding(seq_len, d_model):
+    pe = torch.zeros(seq_len, d_model)
+    position = torch.arange(0, seq_len).unsqueeze(1).float()
+    div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
+                         (-math.log(10000.0) / d_model))
+    pe[:, 0::2] = torch.sin(position * div_term)  # even dims
+    pe[:, 1::2] = torch.cos(position * div_term)  # odd dims
+    return pe
+
+# Add to embeddings
+transformer_input = token_embeddings + positional_encoding
+# Shape: still (8, 768)</code></pre>
+        </section>
+
+        <section>
+          <h3>The Math: Token + Position</h3>
+          <p class="small">Each input vector combines semantic meaning with position:</p>
+          <table class="small">
+            <tr>
+              <th>Position</th><th>Token</th><th>Token Embedding</th><th>+ Pos Encoding</th><th>= Input</th>
+            </tr>
+            <tr class="fragment">
+              <td>0</td><td>[CLS]</td><td>\(\mathbf{x}_0\)</td><td>\(\mathbf{PE}_0\)</td><td>\(\mathbf{z}_0\)</td>
+            </tr>
+            <tr class="fragment">
+              <td>1</td><td>the</td><td>\(\mathbf{x}_1\)</td><td>\(\mathbf{PE}_1\)</td><td>\(\mathbf{z}_1\)</td>
+            </tr>
+            <tr class="fragment">
+              <td>2</td><td>cat</td><td>\(\mathbf{x}_2\)</td><td>\(\mathbf{PE}_2\)</td><td>\(\mathbf{z}_2\)</td>
+            </tr>
+            <tr class="fragment">
+              <td>3</td><td>sat</td><td>\(\mathbf{x}_3\)</td><td>\(\mathbf{PE}_3\)</td><td>\(\mathbf{z}_3\)</td>
+            </tr>
+            <tr class="fragment">
+              <td>...</td><td>...</td><td>...</td><td>...</td><td>...</td>
+            </tr>
+          </table>
           <p class="small fragment">
+            Now "cat" at position 2 has a different representation than "cat" at position 5!
+          </p>
+        </section>
+
+        <section>
+          <h3>Step 4: Into Attention</h3>
+          <p class="small">The positioned embeddings become Q, K, V for self-attention:</p>
+          <pre><code class="language-python"># Input: positioned embeddings Z = (seq_len, d_model)
+Z = token_embeddings + positional_encoding  # (8, 768)
+
+# Project to Q, K, V
+Q = Z @ W_q  # (8, 768) @ (768, 768) = (8, 768)
+K = Z @ W_k  # (8, 768)
+V = Z @ W_v  # (8, 768)
+
+# Compute attention
+scores = Q @ K.T / sqrt(d_k)  # (8, 8) — every token attends to every token
+weights = softmax(scores, dim=-1)  # (8, 8)
+output = weights @ V  # (8, 768) — context-aware representations</code></pre>
+          <div class="fragment highlight-box small">
+            <strong>Full pipeline:</strong> Text → Tokens → IDs → Embeddings → +Position → Q,K,V → Attention → Output
+          </div>
+        </section>
+
+        <section>
+          <h3>Complete Data Flow Diagram</h3>
+          <img src="assets/attention_flow.png" alt="Attention Data Flow" style="max-height: 280px;">
+          <div class="small">
+            <table>
+              <tr><th>Stage</th><th>Shape</th><th>Description</th></tr>
+              <tr class="fragment"><td>Token IDs</td><td>(seq_len,)</td><td>Integer indices</td></tr>
+              <tr class="fragment"><td>Embeddings</td><td>(seq_len, d_model)</td><td>Dense vectors</td></tr>
+              <tr class="fragment"><td>+ Pos Encoding</td><td>(seq_len, d_model)</td><td>Position-aware</td></tr>
+              <tr class="fragment"><td>Q, K, V</td><td>(seq_len, d_model)</td><td>Projected vectors</td></tr>
+              <tr class="fragment"><td>Attention Scores</td><td>(seq_len, seq_len)</td><td>Pairwise similarities</td></tr>
+              <tr class="fragment"><td>Output</td><td>(seq_len, d_model)</td><td>Context-aware repr.</td></tr>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <h3>Positional Encoding Formula</h3>
+          <p class="small">The sinusoidal formula ensures each position has a unique pattern:</p>
+          <div class="highlight-box small">
             \[
               PE_{(pos, 2i)} = \sin\left(\frac{pos}{10000^{2i/d}}\right), \quad
               PE_{(pos, 2i+1)} = \cos\left(\frac{pos}{10000^{2i/d}}\right)
             \]
-          </p>
+          </div>
           <ul class="small">
-            <li class="fragment">Sinusoidal encodings allow the model to generalize to longer sequences.</li>
-            <li class="fragment">Modern models often use <em>learned</em> positional embeddings instead.</li>
+            <li class="fragment"><strong>pos</strong> = position in sequence (0, 1, 2, ...)</li>
+            <li class="fragment"><strong>i</strong> = dimension index (0, 1, ..., d/2-1)</li>
+            <li class="fragment"><strong>2i, 2i+1</strong> = even dimensions use sin, odd use cos</li>
+            <li class="fragment"><strong>10000</strong> = base wavelength (larger → slower oscillation)</li>
           </ul>
+          <p class="small fragment">
+            <strong>Why sin/cos?</strong> The model can learn to attend to relative positions because \(PE_{pos+k}\) can be represented as a linear function of \(PE_{pos}\).
+          </p>
         </section>
 
         <section>
