@@ -18,6 +18,7 @@
       .transition-slide { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
       .transition-slide h2 { color: white; }
       .transition-slide p { color: rgba(255,255,255,0.9); }
+      .graphviz-large .graphviz svg { max-width: 95%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -519,18 +520,21 @@ mat  [░░█░░░░░]  → "sat"</pre>
         <section>
           <h3>The Transformer Architecture</h3>
           <p class="small">"Attention Is All You Need" (Vaswani et al., 2017) — no recurrence, just attention!</p>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph transformer {
-  rankdir=TB;
-  node [fontsize=10, shape=box, style=rounded];
+  rankdir=LR;
+  node [fontsize=12, shape=box, style=rounded, height=0.8];
+  edge [penwidth=1.5];
+  graph [nodesep=0.6, ranksep=1.0];
 
   input [label="Input Embedding\n+ Positional Encoding"];
-  enc1 [label="Encoder Block ×N\n(Self-Attention + FFN)"];
-  enc_out [label="Encoder Output"];
+  enc1 [label="Encoder Block ×N\n(Self-Attention + FFN)", style="filled,rounded", fillcolor="#e3f2fd"];
+  enc_out [label="Encoder\nOutput"];
 
   tgt [label="Target Embedding\n+ Positional Encoding"];
-  dec1 [label="Decoder Block ×N\n(Masked Self-Attn\n+ Cross-Attn + FFN)"];
-  output [label="Output Probabilities"];
+  dec1 [label="Decoder Block ×N\n(Masked Self-Attn\n+ Cross-Attn + FFN)", style="filled,rounded", fillcolor="#fff3e0"];
+  output [label="Output\nProbabilities", style="filled,rounded", fillcolor="#e8f5e9"];
 
   input -> enc1 -> enc_out;
   tgt -> dec1;
@@ -538,6 +542,7 @@ digraph transformer {
   dec1 -> output;
 }
           </code></pre>
+          </div>
         </section>
 
         <section>
@@ -652,23 +657,27 @@ x = self.layer_norm2(x)      # normalize</code></pre>
         <section>
           <h3>From Text to Attention: The Full Pipeline</h3>
           <p class="small">Let's trace how raw text becomes input for attention:</p>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph pipeline {
   rankdir=LR;
-  node [fontsize=10, shape=box, style=rounded];
+  node [fontsize=11, shape=box, style=rounded, height=0.6];
+  edge [penwidth=1.5];
+  graph [nodesep=0.4, ranksep=0.7];
   
   text [label="Raw Text\n\"The cat sat\""];
-  tok [label="Tokenizer"];
-  ids [label="Token IDs\n[101, 1996, 4937, 2068]"];
-  emb [label="Embedding\nLookup"];
+  tok [label="Tokenizer", style="filled,rounded", fillcolor="#e3f2fd"];
+  ids [label="Token IDs\n[101, 1996, 4937]"];
+  emb [label="Embedding\nLookup", style="filled,rounded", fillcolor="#fff3e0"];
   vecs [label="Token Vectors\n(seq, d_model)"];
-  pe [label="+ Positional\nEncoding"];
+  pe [label="+ Positional\nEncoding", style="filled,rounded", fillcolor="#e8f5e9"];
   input [label="Transformer\nInput"];
-  attn [label="Self-Attention"];
+  attn [label="Self-Attention", style="filled,rounded", fillcolor="#ffcdd2"];
   
   text -> tok -> ids -> emb -> vecs -> pe -> input -> attn;
 }
           </code></pre>
+          </div>
         </section>
 
         <section>
@@ -1111,20 +1120,24 @@ Step 4: [START] The cat sat → predicts "on"
         <section>
           <h3>Pre-trained Models: The Big Picture</h3>
           <p class="small">Train once on massive text data, then fine-tune for specific tasks.</p>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph pretrain {
   rankdir=LR;
-  node [fontsize=11, shape=box, style=rounded];
+  node [fontsize=12, shape=box, style=rounded, height=0.7];
+  edge [penwidth=1.5];
+  graph [nodesep=0.6, ranksep=0.9];
 
   corpus [label="Huge Text Corpus\n(Books, Web, Wikipedia)"];
-  pretrain [label="Pre-training\n(Self-supervised)"];
-  model [label="Pre-trained\nTransformer"];
-  finetune [label="Fine-tuning\n(Task-specific)"];
+  pretrain [label="Pre-training\n(Self-supervised)", style="filled,rounded", fillcolor="#e3f2fd"];
+  model [label="Pre-trained\nTransformer", style="filled,rounded", fillcolor="#c8e6c9"];
+  finetune [label="Fine-tuning\n(Task-specific)", style="filled,rounded", fillcolor="#fff3e0"];
   tasks [label="Downstream Tasks\n(QA, NER, Sentiment...)"];
 
   corpus -> pretrain -> model -> finetune -> tasks;
 }
           </code></pre>
+          </div>
           <ul class="small">
             <li class="fragment"><strong>Self-supervised:</strong> no manual labels needed for pre-training.</li>
             <li class="fragment"><strong>Transfer learning:</strong> knowledge transfers to new tasks.</li>

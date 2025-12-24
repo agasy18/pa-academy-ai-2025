@@ -15,6 +15,7 @@
       .two-column > div { flex: 1; }
       .timeline ul { list-style: none; padding-left: 0; }
       .timeline li { margin: 0.25rem 0; }
+      .graphviz-large .graphviz svg { max-width: 95%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -102,19 +103,23 @@ optimizer = optim.Adam(model.parameters(),
 
         <section>
           <h3>Data Augmentation Pipeline</h3>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph aug_pipeline {
   rankdir=LR;
-  node [fontsize=11, shape=box, style=rounded];
+  node [fontsize=13, shape=box, style=rounded, height=0.7];
+  edge [penwidth=1.5];
+  graph [nodesep=0.7, ranksep=0.9];
 
   raw   [label="Original image\n(train sample)"];
-  aug   [label="Random transforms\n(flip, rotate, color jitter)"];
+  aug   [label="Random transforms\n(flip, rotate, color jitter)", style="filled,rounded", fillcolor="#fff3e0"];
   batch [label="Augmented batch\n(x_batch, y_batch)"];
-  model [label="CNN model\n(f(x; θ))"];
+  model [label="CNN model\n(f(x; θ))", style="filled,rounded", fillcolor="#e3f2fd"];
 
   raw -> aug -> batch -> model;
 }
           </code></pre>
+          </div>
           <p class="small">Each epoch, the same image can look different → the model sees a stream of varied views.</p>
         </section>
 

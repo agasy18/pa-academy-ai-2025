@@ -13,6 +13,7 @@
       .two-column { display: flex; gap: 2rem; align-items: flex-start; }
       .two-column > div { flex: 1; }
       .small { font-size: 0.9em; }
+      .graphviz-large .graphviz svg { max-width: 95%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -85,23 +86,28 @@ digraph ae_flow {
         <section>
           <h3>Where the VAE Fits</h3>
           <p class="small">We train a generative model that learns a smooth latent space of 64x64 RGB faces and supports interactive exploration.</p>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph vae_flow {
   rankdir=LR;
-  node [fontsize=11, shape=box, style=rounded];
+  node [fontsize=12, shape=box, style=rounded, height=0.7];
+  edge [penwidth=1.5];
+  graph [nodesep=0.5, ranksep=0.8];
 
   images   [label="Input faces\n(x) [64x64x3]"];
-  encoder  [label="Encoder CNN\nstrided conv blocks"];
+  encoder  [label="Encoder CNN\nstrided conv blocks", style="filled,rounded", fillcolor="#e3f2fd"];
   heads    [label="Latent heads\nfc_mu & fc_logvar"];
-  sample   [label="Reparameterize\nmu + sigma * eps"];
-  decoder  [label="Decoder CNN\nConvTranspose + Tanh"];
-  recon    [label="Reconstruction\n~x"];
+  sample   [label="Reparameterize\nmu + sigma * eps", style="filled,rounded", fillcolor="#fff3e0"];
+  decoder  [label="Decoder CNN\nConvTranspose + Tanh", style="filled,rounded", fillcolor="#e3f2fd"];
+  recon    [label="Reconstruction\n~x", style="filled,rounded", fillcolor="#e8f5e9"];
   pca      [label="Latent PCA\nmetadata + sliders"];
 
   images -> encoder -> heads -> sample -> decoder -> recon;
   heads -> pca [style=dashed];
   sample -> pca [style=dashed];
 }
+          </code></pre>
+          </div>
           </code></pre>
           <ul class="small">
             <li class="fragment">The encoder compresses spatial structure; latent heads model a Gaussian posterior; the decoder mirrors the encoder.</li>

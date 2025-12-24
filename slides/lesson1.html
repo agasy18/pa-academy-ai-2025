@@ -11,6 +11,7 @@
     <style>
       /* Lesson 1 specific overrides */
       .graphviz svg { max-width: 80%; }
+      .graphviz-large .graphviz svg { max-width: 95%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -76,21 +77,24 @@
 
         <section>
           <h3>Diagram: Single Neuron</h3>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph neuron {
   rankdir=LR;
-  node [shape=circle, fontsize=12];
+  node [shape=circle, fontsize=14, width=1.0];
+  edge [penwidth=1.5];
 
   x1 [label="x₁"];
   x2 [label="x₂"];
   x3 [label="x₃"];
-  h  [label="σ(w·x + b)"];
+  h  [label="σ(w·x + b)", width=1.5];
 
   x1 -> h;
   x2 -> h;
   x3 -> h;
 }
           </code></pre>
+          </div>
           <p class="small">Multiple inputs are combined into a single neuron that applies σ to \(w \cdot x + b\).</p>
         </section>
 
@@ -140,10 +144,13 @@ digraph neuron {
 
         <section>
           <h3>Diagram: Two-Layer Network</h3>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph two_layer {
   rankdir=LR;
-  node [shape=circle, fontsize=12];
+  node [shape=circle, fontsize=14, width=0.8];
+  edge [penwidth=1.5];
+  graph [nodesep=0.5, ranksep=1.0];
 
   subgraph cluster_input {
     label="Inputs";
@@ -154,7 +161,7 @@ digraph two_layer {
 
   subgraph cluster_hidden {
     label="Hidden layer (ReLU)";
-    color="lightgray";
+    style=filled; fillcolor="#f5f5f5";
     h1 [label="h₁"];
     h2 [label="h₂"];
     h3 [label="h₃"];
@@ -170,6 +177,8 @@ digraph two_layer {
   x2 -> h1; x2 -> h2; x2 -> h3;
   h1 -> y;  h2 -> y;  h3 -> y;
 }
+          </code></pre>
+          </div>
           </code></pre>
           <p class="small">Inputs feed into hidden units, which then feed into the output neuron.</p>
           

@@ -13,6 +13,7 @@
       .two-column { display: flex; gap: 2rem; align-items: flex-start; }
       .two-column > div { flex: 1; }
       .small { font-size: 0.9em; }
+      .graphviz-large .graphviz svg { max-width: 95%; }
     </style>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   </head>
@@ -57,20 +58,24 @@ digraph nlp_vs_vision {
         <section>
           <h3>Text Processing Pipeline</h3>
           <p class="small">High-level steps to go from raw text to model-ready tensors.</p>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph nlp_pipeline {
   rankdir=LR;
-  node [fontsize=11, shape=box, style=rounded];
+  node [fontsize=12, shape=box, style=rounded, height=0.7];
+  edge [penwidth=1.5];
+  graph [nodesep=0.5, ranksep=0.8];
 
   text   [label="Raw text\n\"I loved the movie!\""];
-  tokens [label="Tokenization\n['I', 'loved', 'the', 'movie']"];
-  ids    [label="Vocabulary lookup\n[12, 57, 3, 98]"];
-  emb    [label="Embedding layer\nlookup vectors"];
+  tokens [label="Tokenization\n['I', 'loved', 'the', 'movie']", style="filled,rounded", fillcolor="#e3f2fd"];
+  ids    [label="Vocabulary lookup\n[12, 57, 3, 98]", style="filled,rounded", fillcolor="#fff3e0"];
+  emb    [label="Embedding layer\nlookup vectors", style="filled,rounded", fillcolor="#e8f5e9"];
   model  [label="NLP model\nclassifier / LM"];
 
   text -> tokens -> ids -> emb -> model;
 }
           </code></pre>
+          </div>
           <ul class="small">
             <li class="fragment">Today: focus on <strong>tokens</strong>, <strong>vocabulary</strong>, and <strong>embeddings</strong>.</li>
             <li class="fragment">Next lesson: sequence models (LSTM, Transformers) on top of embeddings.</li>

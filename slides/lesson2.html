@@ -12,6 +12,7 @@
       /* Lesson 2 specific overrides */
       .graphviz svg { max-width: 55%; }
       .softmax-diagram .graphviz svg { max-width: 24%; }
+      .graphviz-large .graphviz svg { max-width: 95% !important; }
       .activation-plot { margin: 0.15rem 0 0.15rem; }
       .activation-plot img { max-width: 32%; }
       .activation-plot + ul { margin-top: 0.2rem; }
@@ -51,16 +52,18 @@
 
         <section>
           <h3>Visualization: Simple Neuron</h3>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph simple_neuron {
   rankdir=LR;
-  node [fontsize=12];
+  node [fontsize=14];
+  edge [penwidth=1.5];
 
-  x1 [label="x₁"];
-  x2 [label="x₂"];
-  x3 [label="x₃"];
-  neuron [label="z = w·x + b\n a = σ(z)", shape=circle, style=filled, fillcolor="#f5f5f5"];
-  y [label="output a", shape=box];
+  x1 [label="x₁", width=0.6];
+  x2 [label="x₂", width=0.6];
+  x3 [label="x₃", width=0.6];
+  neuron [label="z = w·x + b\n a = σ(z)", shape=circle, style=filled, fillcolor="#e3f2fd", width=1.5];
+  y [label="output a", shape=box, style="filled,rounded", fillcolor="#e8f5e9"];
 
   x1 -> neuron;
   x2 -> neuron;
@@ -68,6 +71,7 @@ digraph simple_neuron {
   neuron -> y;
 }
           </code></pre>
+          </div>
           <p class="small">Inputs are combined linearly into \(z\), then passed through an activation \(\sigma\) to produce output \(a\).</p>
         </section>
 
@@ -235,22 +239,26 @@ digraph softmax_flow {
 
         <section>
           <h3>Diagram: Training Loop</h3>
+          <div class="graphviz-large">
           <pre><code class="language-dot" data-graphviz>
 digraph training_loop {
   rankdir=LR;
-  node [shape=box, fontsize=12, style=rounded];
+  node [shape=box, fontsize=13, style=rounded, height=0.6];
+  edge [penwidth=1.5];
+  graph [nodesep=0.6, ranksep=0.8];
 
   data      [label="Mini-batch (x, y)"];
-  model     [label="Model f_θ"];
+  model     [label="Model f_θ", style="filled,rounded", fillcolor="#e3f2fd"];
   preds     [label="Predictions ŷ"];
-  loss      [label="Loss L(ŷ, y)"];
+  loss      [label="Loss L(ŷ, y)", style="filled,rounded", fillcolor="#ffcdd2"];
   grads     [label="Gradients ∂L/∂θ"];
-  optimizer [label="Optimizer update θ ← θ - η∂L/∂θ"];
+  optimizer [label="Optimizer update\nθ ← θ - η∂L/∂θ", style="filled,rounded", fillcolor="#c8e6c9"];
 
   data -> model -> preds -> loss -> grads -> optimizer;
-  optimizer -> model [label="updated θ", fontsize=10];
+  optimizer -> model [label="updated θ", fontsize=10, style=dashed];
 }
           </code></pre>
+          </div>
           <p class="small">Key idea: the loss tells us how wrong we are; gradients tell us how to change \(\theta\).</p>
         </section>
 
