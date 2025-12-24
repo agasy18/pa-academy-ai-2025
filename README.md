@@ -229,13 +229,6 @@ Additional resources (used in Lesson 3 slides):
 
 ---
 
-## 📒 Notebooks (Lesson 1)
-
-- Demo: `notebooks/lesson1_demo.ipynb`
-  - Mirrors Lesson 1 slides: generate 2D data (circles/spiral), build a small PyTorch model, and plot decision regions.
-- Homework: `notebooks/lesson1_homework.ipynb`
-  - Guided experiments on layers, activations, and learning-rate sensitivity with short reflection prompts.
-
 Run locally:
 - Option A (Jupyter): `jupyter notebook` and open the files in `notebooks/`
 - Option B (Lab): `jupyter lab`

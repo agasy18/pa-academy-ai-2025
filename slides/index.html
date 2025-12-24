@@ -3,279 +3,1054 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>PA Academy AI 2025 — Course Syllabus</title>
+    <title>PA Academy AI 2025 — Deep Learning Course</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
         --primary-color: #0645AD;
+        --primary-light: #2563eb;
+        --primary-dark: #1e3a8a;
         --bg-color: #f9f9f9;
         --card-bg: #ffffff;
         --text-color: #333;
         --secondary-text: #666;
+        --accent-glow: rgba(6, 69, 173, 0.15);
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
         line-height: 1.6;
         color: var(--text-color);
         background-color: var(--bg-color);
-        margin: 0;
-        padding: 20px;
+        overflow-x: hidden;
       }
 
-      .container {
-        max-width: 900px;
+      /* ===== HEADER / NAV ===== */
+      .site-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+        padding: 1rem 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.3s ease;
+      }
+
+      .site-header.scrolled {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+        padding: 0.75rem 2rem;
+      }
+
+      .site-header.scrolled .header-logo img {
+        height: 36px;
+      }
+
+      .header-logo img {
+        height: 44px;
+        width: auto;
+        transition: height 0.3s ease;
+      }
+
+      .header-nav {
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+      }
+
+      .header-nav a {
+        color: rgba(255, 255, 255, 0.8);
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: color 0.3s ease;
+      }
+
+      .site-header.scrolled .header-nav a {
+        color: var(--text-color);
+      }
+
+      .header-nav a:hover {
+        color: #fff;
+        text-decoration: none;
+      }
+
+      .site-header.scrolled .header-nav a:hover {
+        color: var(--primary-color);
+      }
+
+      .header-cta {
+        padding: 0.5rem 1.25rem !important;
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 50px;
+        backdrop-filter: blur(10px);
+      }
+
+      .site-header.scrolled .header-cta {
+        background: var(--primary-color) !important;
+        border-color: var(--primary-color);
+        color: white !important;
+      }
+
+      @media (max-width: 600px) {
+        .header-nav {
+          display: none;
+        }
+      }
+
+      /* ===== HERO SECTION ===== */
+      .hero {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+        padding: 2rem;
+        background: 
+          radial-gradient(ellipse 80% 60% at 50% 100%, rgba(6, 69, 173, 0.25), transparent),
+          radial-gradient(ellipse 60% 50% at 20% 20%, rgba(147, 51, 234, 0.15), transparent),
+          radial-gradient(ellipse 50% 40% at 80% 30%, rgba(236, 72, 153, 0.1), transparent),
+          linear-gradient(to bottom, #0a0a12, #0f1629, #0a0a12);
+        overflow: hidden;
+      }
+
+      .hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: 
+          radial-gradient(circle at 20% 30%, rgba(6, 69, 173, 0.4) 1px, transparent 1px),
+          radial-gradient(circle at 80% 70%, rgba(147, 51, 234, 0.3) 1px, transparent 1px),
+          radial-gradient(circle at 40% 80%, rgba(236, 72, 153, 0.3) 0.5px, transparent 0.5px),
+          radial-gradient(circle at 60% 20%, rgba(6, 69, 173, 0.3) 0.5px, transparent 0.5px);
+        background-size: 100px 100px, 150px 150px, 80px 80px, 120px 120px;
+        opacity: 0.5;
+        animation: float 20s ease-in-out infinite;
+      }
+
+      @keyframes float {
+        0%, 100% { transform: translate(0, 0) rotate(0deg); }
+        25% { transform: translate(10px, -10px) rotate(1deg); }
+        50% { transform: translate(-5px, 5px) rotate(-1deg); }
+        75% { transform: translate(-10px, -5px) rotate(0.5deg); }
+      }
+
+      .hero-layout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4rem;
+        z-index: 1;
+        max-width: 1200px;
+        width: 100%;
+        padding: 0 2rem;
+      }
+
+      .hero-image {
+        flex-shrink: 0;
+        animation: fadeInLeft 1s ease-out 0.2s both, heroFloat 6s ease-in-out infinite 1.2s;
+      }
+
+      .hero-image img {
+        width: clamp(280px, 35vw, 420px);
+        height: auto;
+        filter: drop-shadow(0 20px 60px rgba(6, 69, 173, 0.4));
+      }
+
+      @keyframes heroFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-15px); }
+      }
+
+      @keyframes fadeInLeft {
+        from {
+          opacity: 0;
+          transform: translateX(-40px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .hero-content {
+        text-align: left;
+        z-index: 1;
+        max-width: 560px;
+      }
+
+      .hero-badge {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        margin-bottom: 1.5rem;
+        animation: fadeInUp 0.8s ease-out 0.4s both;
+        backdrop-filter: blur(10px);
+      }
+
+      .hero-title {
+        font-family: 'DM Serif Display', serif;
+        font-size: clamp(2.5rem, 5vw, 4rem);
+        font-weight: 400;
+        color: #ffffff;
+        line-height: 1.1;
+        margin-bottom: 0.75rem;
+        animation: fadeInUp 0.8s ease-out 0.6s both;
+      }
+
+      .hero-title span {
+        background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .hero-subtitle {
+        font-size: clamp(1.1rem, 2vw, 1.3rem);
+        font-weight: 400;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 1.25rem;
+        animation: fadeInUp 0.8s ease-out 0.8s both;
+      }
+
+      .hero-description {
+        font-size: 1rem;
+        color: rgba(255, 255, 255, 0.6);
+        margin-bottom: 2rem;
+        line-height: 1.7;
+        animation: fadeInUp 0.8s ease-out 1s both;
+      }
+
+      .hero-cta {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 2rem;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+        color: white;
+        text-decoration: none;
+        border-radius: 50px;
+        font-weight: 500;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        animation: fadeInUp 0.8s ease-out 1.2s both;
+        box-shadow: 0 4px 30px rgba(6, 69, 173, 0.5);
+      }
+
+      .hero-cta:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 40px rgba(6, 69, 173, 0.6);
+        text-decoration: none;
+      }
+
+      .hero-cta svg {
+        transition: transform 0.3s ease;
+      }
+
+      .hero-cta:hover svg {
+        transform: translateY(4px);
+      }
+
+      .scroll-indicator {
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        animation: fadeInUp 0.8s ease-out 1.4s both, bounce 2s ease-in-out 2.4s infinite;
+      }
+
+      .scroll-indicator svg {
+        width: 32px;
+        height: 32px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes bounce {
+        0%, 100% { transform: translateX(-50%) translateY(0); }
+        50% { transform: translateX(-50%) translateY(10px); }
+      }
+
+      @media (max-width: 900px) {
+        .hero-layout {
+          flex-direction: column;
+          text-align: center;
+          gap: 2.5rem;
+        }
+
+        .hero-content {
+          text-align: center;
+        }
+
+        .hero-image img {
+          width: clamp(220px, 50vw, 320px);
+        }
+      }
+
+      /* ===== MAIN CONTENT ===== */
+      .main-content {
+        max-width: 1200px;
         margin: 0 auto;
+        padding: 6rem 2rem;
       }
 
-      header {
-        text-align: center;
-        margin-bottom: 3rem;
-        padding: 2rem 0;
-        border-bottom: 1px solid #eee;
+      /* ===== MODULE SECTIONS ===== */
+      .module {
+        margin-bottom: 5rem;
+        opacity: 0;
+        transform: translateY(40px);
+        transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
       }
 
-      h1 {
-        margin: 0;
-        font-size: 2.5rem;
-        color: #111;
+      .module.visible {
+        opacity: 1;
+        transform: translateY(0);
       }
 
-      h2 {
-        font-weight: normal;
+      .module-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(6, 69, 173, 0.1);
+      }
+
+      .module-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+        color: white;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 500;
+        font-size: 1.1rem;
+        border-radius: 12px;
+        flex-shrink: 0;
+      }
+
+      .module-info h2 {
+        font-family: 'DM Serif Display', serif;
+        font-size: 1.8rem;
+        font-weight: 400;
+        color: var(--text-color);
+        margin-bottom: 0.25rem;
+      }
+
+      .module-info p {
+        font-size: 0.95rem;
         color: var(--secondary-text);
-        margin-top: 0.5rem;
+      }
+
+      /* ===== LESSON CARDS ===== */
+      .lessons-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 1.5rem;
       }
 
       .lesson-card {
         background: var(--card-bg);
-        border-radius: 8px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-radius: 16px;
         padding: 2rem;
-        margin-bottom: 2rem;
-        border: 1px solid #e1e1e1;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 1px solid rgba(6, 69, 173, 0.08);
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .lesson-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.4s ease;
       }
 
       .lesson-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(6, 69, 173, 0.12);
+        border-color: rgba(6, 69, 173, 0.15);
       }
 
-      .lesson-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        border-bottom: 2px solid #f0f0f0;
-        padding-bottom: 1rem;
-        margin-bottom: 1.5rem;
-        flex-wrap: wrap;
+      .lesson-card:hover::before {
+        transform: scaleX(1);
       }
 
-      .lesson-title {
-        font-size: 1.5rem;
-        margin: 0;
-      }
-
-      .lesson-title a {
-        text-decoration: none;
+      .lesson-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: rgba(6, 69, 173, 0.08);
         color: var(--primary-color);
-        font-weight: 600;
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
       }
 
-      .lesson-title a:hover {
-        text-decoration: underline;
+      .lesson-card h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+      }
+
+      .lesson-card h3 a {
+        color: var(--text-color);
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+
+      .lesson-card:hover h3 a {
+        color: var(--primary-color);
       }
 
       .lesson-topics {
         list-style: none;
-        padding: 0;
-        margin: 0;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 0.5rem 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
       }
 
       .lesson-topics li {
-        position: relative;
-        padding-left: 1.2rem;
+        font-size: 0.82rem;
+        padding: 0.35rem 0.75rem;
+        background: rgba(6, 69, 173, 0.05);
+        border-radius: 20px;
         color: var(--secondary-text);
+        transition: all 0.3s ease;
       }
 
-      .lesson-topics li::before {
-        content: "•";
-        position: absolute;
-        left: 0;
-        color: var(--primary-color);
+      .lesson-card:hover .lesson-topics li {
+        background: rgba(6, 69, 173, 0.08);
       }
 
-      footer {
-        text-align: center;
-        margin-top: 4rem;
-        color: var(--secondary-text);
+      .lesson-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 1.5rem;
+        font-weight: 500;
         font-size: 0.9rem;
-      }
-
-      a {
         color: var(--primary-color);
         text-decoration: none;
-      }
-      
-      a:hover {
-        text-decoration: underline;
+        transition: gap 0.3s ease;
       }
 
-      @media (max-width: 600px) {
-        .lesson-header {
-          flex-direction: column;
-        }
-        .lesson-topics {
+      .lesson-link:hover {
+        gap: 0.75rem;
+        text-decoration: none;
+      }
+
+      /* ===== STATS SECTION ===== */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        padding: 4rem 0;
+        margin: 4rem 0;
+        border-top: 1px solid rgba(6, 69, 173, 0.1);
+        border-bottom: 1px solid rgba(6, 69, 173, 0.1);
+      }
+
+      .stat {
+        text-align: center;
+      }
+
+      .stat-number {
+        font-family: 'DM Serif Display', serif;
+        font-size: 3rem;
+        color: var(--primary-color);
+        line-height: 1;
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-label {
+        font-size: 0.95rem;
+        color: var(--secondary-text);
+      }
+
+      /* ===== FOOTER ===== */
+      footer {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: var(--card-bg);
+        border-top: 1px solid rgba(6, 69, 173, 0.08);
+      }
+
+      .footer-logo {
+        display: inline-block;
+        margin-bottom: 1.5rem;
+      }
+
+      .footer-logo img {
+        height: 50px;
+        width: auto;
+        transition: opacity 0.3s ease;
+      }
+
+      .footer-logo:hover img {
+        opacity: 0.8;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+      }
+
+      .footer-links a {
+        color: var(--secondary-text);
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: color 0.3s ease;
+      }
+
+      .footer-links a:hover {
+        color: var(--primary-color);
+      }
+
+      .footer-author {
+        font-size: 0.95rem;
+        color: var(--text-color);
+        margin-bottom: 0.5rem;
+      }
+
+      .footer-copyright {
+        font-size: 0.85rem;
+        color: var(--secondary-text);
+      }
+
+      /* ===== RESPONSIVE ===== */
+      @media (max-width: 768px) {
+        .lessons-grid {
           grid-template-columns: 1fr;
         }
+
+        .module-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .hero-title {
+          font-size: 2.5rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .stats {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ===== CODE STYLING ===== */
+      code {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.85em;
+        background: rgba(6, 69, 173, 0.08);
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        color: var(--primary-dark);
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <header>
-        <h1>Picsart Academy</h1>
-        <h2>Deep Learning 2025 — Course Syllabus</h2>
-        <p>A practical introduction to Deep Learning with PyTorch, from basic neurons to Variational Autoencoders.</p>
+    <!-- ===== HEADER ===== -->
+    <header class="site-header">
+      <a href="https://picsartacademy.am/" target="_blank" rel="noopener" class="header-logo">
+        <img src="assets/logo.webp" alt="Picsart Academy" />
+      </a>
+      <nav class="header-nav">
+        <a href="#curriculum">Curriculum</a>
+        <a href="#notebooks">Notebooks</a>
+        <a href="#projects">Projects</a>
+        <a href="https://github.com/agasy18/pa-academy-ai-2025" target="_blank" rel="noopener">GitHub</a>
+        <a href="lesson1.html" class="header-cta">Start Learning</a>
+      </nav>
       </header>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson1.html">Lesson 1: From Regression to Deep Learning</a></h3>
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+      <div class="hero-layout">
+        <div class="hero-image">
+          <img src="assets/picsart-acdemy.webp" alt="Picsart Academy - Deep Learning Course" />
         </div>
-        <ul class="lesson-topics">
-          <li>Why Regression Isn’t Enough</li>
-          <li>Single Neuron & Bias Intuition</li>
-          <li>ReLU & Sigmoid Activations</li>
-          <li>Two-Layer Networks & Forward Pass</li>
-          <li>Interactive Demo (TF Playground)</li>
-          <li>Hands-on: Making a 2D Dataset</li>
-          <li>Training & Evaluating in PyTorch</li>
-          <li>Visualizing Decision Regions</li>
-        </ul>
+        <div class="hero-content">
+          <div class="hero-badge">🎓 Deep Learning 2025</div>
+          <h1 class="hero-title">
+            <span>Picsart</span> Academy
+          </h1>
+          <p class="hero-subtitle">Deep Learning with PyTorch</p>
+          <p class="hero-description">
+            A practical journey from neurons and CNNs to Transformers and multi-modal vision–language models like CLIP.
+          </p>
+          <a href="#curriculum" class="hero-cta">
+            Explore Curriculum
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M19 12l-7 7-7-7"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      <div class="scroll-indicator">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M19 12l-7 7-7-7"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main class="main-content" id="curriculum">
+      
+      <!-- Stats -->
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number">8</div>
+          <div class="stat-label">In-depth Lessons</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">5</div>
+          <div class="stat-label">Core Modules</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">8</div>
+          <div class="stat-label">Hands-on Notebooks</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">1</div>
+          <div class="stat-label">Full Project</div>
+        </div>
       </div>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson2.html">Lesson 2: How Neural Networks Learn</a></h3>
+      <!-- Module 1 -->
+      <section class="module" data-module="1">
+        <div class="module-header">
+          <div class="module-number">01</div>
+          <div class="module-info">
+            <h2>Deep Learning Fundamentals</h2>
+            <p>Understand how neural networks learn and predict</p>
+          </div>
         </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">01</div>
+            <h3><a href="lesson1.html">From Regression to Deep Learning</a></h3>
+            <ul class="lesson-topics">
+              <li>Why Regression Isn't Enough</li>
+              <li>Single Neuron & Bias</li>
+              <li>ReLU & Sigmoid</li>
+              <li>Forward Pass</li>
+              <li>Decision Regions</li>
+            </ul>
+            <a href="lesson1.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">02</div>
+            <h3><a href="lesson2.html">How Neural Networks Learn</a></h3>
         <ul class="lesson-topics">
-          <li>Activations in Practice (ReLU, GELU, Softmax)</li>
-          <li>Loss Functions (MSE, Cross-Entropy)</li>
-          <li>Backpropagation & Gradient Descent</li>
-          <li>Optimizers: SGD with Momentum vs. Adam</li>
-          <li>Mini-Batch Training</li>
-          <li>Learning Rate Intuition</li>
-          <li>Training Curves & Debugging</li>
-          <li>Hands-on: Training on MNIST</li>
+              <li>Loss Functions</li>
+              <li>Backpropagation</li>
+              <li>SGD vs Adam</li>
+              <li>Mini-Batch Training</li>
+              <li>MNIST Hands-on</li>
         </ul>
+            <a href="lesson2.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
       </div>
+      </section>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson3.html">Lesson 3: Convolutional Neural Networks</a></h3>
+      <!-- Module 2 -->
+      <section class="module" data-module="2">
+        <div class="module-header">
+          <div class="module-number">02</div>
+          <div class="module-info">
+            <h2>Computer Vision with CNNs</h2>
+            <p>Seeing the world through convolutional neural networks</p>
+          </div>
         </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">03</div>
+            <h3><a href="lesson3.html">Convolutional Neural Networks</a></h3>
+            <ul class="lesson-topics">
+              <li>Convolutions</li>
+              <li>Receptive Fields</li>
+              <li>Pooling</li>
+              <li>Dropout & BatchNorm</li>
+              <li>LeNet Architecture</li>
+            </ul>
+            <a href="lesson3.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">04</div>
+            <h3><a href="lesson4.html">Data Augmentation & Architectures</a></h3>
         <ul class="lesson-topics">
-          <li>From Dense to Convolutional Layers</li>
-          <li>Convolution: Local Receptive Fields</li>
-          <li>Pooling & Downsampling</li>
-          <li>LeNet Architecture</li>
-          <li>Regularization: Dropout</li>
-          <li>Normalization: BatchNorm Intuition</li>
-          <li>Building a CNN in PyTorch</li>
-          <li>CNN Training on MNIST</li>
-        </ul>
-      </div>
-
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson4.html">Lesson 4: Data Augmentation & CNN Architectures</a></h3>
-        </div>
-        <ul class="lesson-topics">
-          <li>Data Augmentation Pipeline</li>
-          <li>Using <code>torchvision.transforms</code></li>
-          <li>Key Architectures: LeNet → AlexNet</li>
-          <li>VGG & Inception Modules</li>
-          <li>ResNet: Residual Connections</li>
-          <li>Depthwise Separable Convolutions</li>
+              <li>Augmentation Pipeline</li>
+              <li>LeNet → AlexNet → VGG</li>
+              <li>ResNet</li>
           <li>Transfer Learning</li>
-          <li>Image Search with Cosine Similarity</li>
+              <li>Cosine Similarity</li>
         </ul>
+            <a href="lesson4.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
       </div>
+      </section>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson5.html">Lesson 5: Variational Autoencoders & Latent PCA</a></h3>
+      <!-- Module 3 -->
+      <section class="module" data-module="3">
+        <div class="module-header">
+          <div class="module-number">03</div>
+          <div class="module-info">
+            <h2>Generative Models</h2>
+            <p>Creating new data with Variational Autoencoders</p>
+          </div>
         </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">05</div>
+            <h3><a href="lesson5.html">Variational Autoencoders & Latent PCA</a></h3>
         <ul class="lesson-topics">
-          <li>Autoencoder Architecture (Encoder/Decoder)</li>
-          <li>Latent Space & Reparameterization Trick</li>
-          <li>\(\beta\)-ELBO Loss Function</li>
-          <li>KL Divergence Intuition</li>
-          <li>Latent PCA for Controlled Generation</li>
-          <li>Perceptual Loss vs. MSE</li>
-          <li>\(\beta\)-VAE & Disentanglement</li>
-          <li>Interactive Face Generation</li>
+              <li>Encoder / Decoder</li>
+              <li>Reparameterization</li>
+              <li>β-ELBO Loss</li>
+              <li>KL Divergence</li>
+              <li>Latent PCA Controls</li>
+              <li>Face Generation</li>
         </ul>
+            <a href="lesson5.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
       </div>
+      </section>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson6.html">Lesson 6: NLP — From Words to Embeddings</a></h3>
+      <!-- Module 4 -->
+      <section class="module" data-module="4">
+        <div class="module-header">
+          <div class="module-number">04</div>
+          <div class="module-info">
+            <h2>Natural Language Processing</h2>
+            <p>Teaching machines to understand text</p>
+          </div>
         </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">06</div>
+            <h3><a href="lesson6.html">From Words to Embeddings</a></h3>
+            <ul class="lesson-topics">
+              <li>Tokenization</li>
+              <li>Vocabularies</li>
+              <li><code>nn.Embedding</code></li>
+              <li>Word2Vec</li>
+              <li>Sentiment Classifier</li>
+            </ul>
+            <a href="lesson6.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">07</div>
+            <h3><a href="lesson7.html">Transformers & Attention</a></h3>
         <ul class="lesson-topics">
-          <li>Why NLP is Different from Vision</li>
-          <li>Tokenization &amp; Vocabularies</li>
-          <li>From One-Hot to Embeddings</li>
-          <li>PyTorch <code>nn.Embedding</code> Basics</li>
-          <li>Distributional Semantics &amp; Word2Vec Intuition</li>
-          <li>Simple Embedding-Based Sentiment Classifier</li>
-          <li>Padding &amp; Handling Variable-Length Sequences</li>
-          <li>Preview: LSTMs, Attention &amp; Transformers</li>
+              <li>RNNs & LSTMs</li>
+              <li>Self-Attention</li>
+              <li>Multi-Head Attention</li>
+              <li>BERT & GPT</li>
+              <li>Hugging Face</li>
         </ul>
+            <a href="lesson7.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
       </div>
+      </section>
 
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson7.html">Lesson 7: Transformers, Attention &amp; Pre-trained Models</a></h3>
+      <!-- Module 5 -->
+      <section class="module" data-module="5">
+        <div class="module-header">
+          <div class="module-number">05</div>
+          <div class="module-info">
+            <h2>Multi-Modal AI</h2>
+            <p>Connecting vision and language together</p>
+          </div>
         </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">08</div>
+            <h3><a href="lesson8.html">From Vision–Language Models to CLIP</a></h3>
         <ul class="lesson-topics">
-          <li>RNNs &amp; LSTMs: Sequential Processing Limits</li>
-          <li>The Attention Mechanism (Query, Key, Value)</li>
-          <li>Self-Attention &amp; Multi-Head Attention</li>
-          <li>The Transformer Architecture</li>
-          <li>Positional Encoding</li>
-          <li>BERT: Bidirectional Understanding</li>
-          <li>GPT: Autoregressive Generation</li>
-          <li>Using Pre-trained Models (Hugging Face)</li>
+              <li>CNN + RNN Captioning</li>
+              <li>Visual Attention</li>
+              <li>CLIP Architecture</li>
+              <li>Contrastive Learning</li>
+              <li>Zero-Shot Classification</li>
+              <li>Text-to-Image</li>
         </ul>
-      </div>
-
-      <div class="lesson-card">
-        <div class="lesson-header">
-          <h3 class="lesson-title"><a href="lesson8.html">Lesson 8: From Vision–Language Models to CLIP</a></h3>
+            <a href="lesson8.html" class="lesson-link">
+              Start Lesson →
+            </a>
+          </article>
         </div>
-        <ul class="lesson-topics">
-          <li>The Vision-Language Challenge</li>
-          <li>Pre-CLIP Era: CNN + RNN Captioning</li>
-          <li>Show and Tell, Show Attend and Tell</li>
-          <li>Shared Embedding Spaces</li>
-          <li>CLIP: Dual Encoder Architecture</li>
-          <li>Contrastive Learning &amp; InfoNCE Loss</li>
-          <li>Zero-Shot Classification &amp; Retrieval</li>
-          <li>Building on CLIP: Captioning &amp; Text-to-Image</li>
-        </ul>
-      </div>
+      </section>
 
-      <footer>
-        <p>Course Repository: <a href="https://github.com/agasy18/pa-academy-ai-2025">https://github.com/agasy18/pa-academy-ai-2025</a></p>
-      </footer>
-    </div>
-    
-    <!-- MathJax for rendering inline math in topics if needed -->
+      <!-- Notebooks Section -->
+      <section class="module" data-module="6" id="notebooks">
+        <div class="module-header">
+          <div class="module-number">📓</div>
+          <div class="module-info">
+            <h2>Hands-on Notebooks</h2>
+            <p>Jupyter notebooks with runnable code examples</p>
+          </div>
+        </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number">L1</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson1_demo.ipynb" target="_blank">Regression to Deep Learning Demo</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Generate a spiral dataset, train a small PyTorch network with ReLU/Sigmoid, and visualize decision regions.
+            </p>
+            <ul class="lesson-topics">
+              <li>Spiral Dataset</li>
+              <li>PyTorch MLP</li>
+              <li>Decision Boundaries</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L2</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson2_Pytorch_MNIST.ipynb" target="_blank">MNIST with Fully-Connected Network</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Classify MNIST digits using an MLP. Achieves ~98% accuracy with live loss visualization and confusion matrix.
+            </p>
+            <ul class="lesson-topics">
+              <li>MNIST</li>
+              <li>MLP Classifier</li>
+              <li>Confusion Matrix</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L3</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson3_Pytorch_MNIST_cnn.ipynb" target="_blank">MNIST with CNN</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Train a CNN on MNIST for ~99% accuracy. Visualize learned convolution filters and activation maps.
+            </p>
+            <ul class="lesson-topics">
+              <li>CNN Architecture</li>
+              <li>Filter Visualization</li>
+              <li>Activation Maps</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L4</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson4_data_augmentation.ipynb" target="_blank">Data Augmentation (CIFAR-10)</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Compare training with and without augmentation using FastAI and xResNet18 on CIFAR-10.
+            </p>
+            <ul class="lesson-topics">
+              <li>FastAI</li>
+              <li>Augmentation Pipeline</li>
+              <li>Transfer Learning</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L6</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson6_word_embeddings.ipynb" target="_blank">Word Embeddings</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              From tokenization to Word2Vec magic. Explore word analogies, Skip-Gram, and CBOW.
+            </p>
+            <ul class="lesson-topics">
+              <li>Tokenization</li>
+              <li><code>nn.Embedding</code></li>
+              <li>Word2Vec Analogies</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L6</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson6_fastai_sentence_classification.ipynb" target="_blank">Sentence Classification (AWD-LSTM)</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Classify AG News topics using a pretrained AWD-LSTM with FastAI's text module.
+            </p>
+            <ul class="lesson-topics">
+              <li>AG News</li>
+              <li>AWD-LSTM</li>
+              <li>Fine-tuning</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L6</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson6_fastai_boe.ipynb" target="_blank">Bag of Embeddings Classifier</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              A simpler alternative: average pretrained GloVe embeddings and classify with a linear layer.
+            </p>
+            <ul class="lesson-topics">
+              <li>GloVe Embeddings</li>
+              <li>Bag of Embeddings</li>
+              <li>Topic Classification</li>
+            </ul>
+          </article>
+          <article class="lesson-card">
+            <div class="lesson-number">L7</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/blob/master/notebooks/lesson7_transformers_attention.ipynb" target="_blank">Transformers & Attention</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Self-attention from scratch, positional encoding, multi-head attention. Use BERT & GPT-2 via Hugging Face.
+            </p>
+            <ul class="lesson-topics">
+              <li>Self-Attention</li>
+              <li>BERT & GPT-2</li>
+              <li>Hugging Face</li>
+            </ul>
+          </article>
+      </div>
+      </section>
+
+      <!-- Projects Section -->
+      <section class="module" data-module="7" id="projects">
+        <div class="module-header">
+          <div class="module-number">🚀</div>
+          <div class="module-info">
+            <h2>Projects</h2>
+            <p>Larger hands-on projects to apply your skills</p>
+          </div>
+        </div>
+        <div class="lessons-grid">
+          <article class="lesson-card">
+            <div class="lesson-number" style="background: linear-gradient(135deg, #9333ea, #ec4899);">VAE</div>
+            <h3><a href="https://github.com/agasy18/pa-academy-ai-2025/tree/master/projects/face_autoencoder" target="_blank">Face Autoencoder</a></h3>
+            <p style="color: var(--secondary-text); font-size: 0.9rem; margin-bottom: 1rem;">
+              Train a Variational Autoencoder on LFW faces, analyze the latent space with PCA, and explore an interactive Gradio app that lets you manipulate facial features with sliders.
+            </p>
+        <ul class="lesson-topics">
+              <li>VAE</li>
+              <li>LFW Dataset</li>
+              <li>Latent PCA</li>
+              <li>Gradio App</li>
+              <li>Face Generation</li>
+        </ul>
+            <a href="https://github.com/agasy18/pa-academy-ai-2025/tree/master/projects/face_autoencoder" target="_blank" class="lesson-link">
+              View Project →
+            </a>
+          </article>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer>
+      <a href="https://picsartacademy.am/" target="_blank" rel="noopener" class="footer-logo">
+        <img src="assets/logo.webp" alt="Picsart Academy" />
+      </a>
+      <div class="footer-links">
+        <a href="https://github.com/agasy18/pa-academy-ai-2025" target="_blank" rel="noopener">GitHub Repository</a>
+        <a href="lesson1.html">Start Learning</a>
+      </div>
+      <p class="footer-author">Created by <a href="https://www.linkedin.com/in/aghasip" target="_blank" rel="noopener">Aghasi Poghosyan</a></p>
+      <p class="footer-copyright">Deep Learning Course 2025</p>
+    </footer>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script>
+      // Header scroll effect
+      const header = document.querySelector('.site-header');
+      let lastScroll = 0;
+
+      window.addEventListener('scroll', () => {
+        const currentScroll = window.pageYOffset;
+        
+        if (currentScroll > 100) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+        
+        lastScroll = currentScroll;
+      });
+
+      // Intersection Observer for scroll animations
+      const observerOptions = {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1
+      };
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry, index) => {
+          if (entry.isIntersecting) {
+            // Add staggered delay based on module number
+            const delay = parseInt(entry.target.dataset.module) * 100;
+            setTimeout(() => {
+              entry.target.classList.add('visible');
+            }, delay);
+          }
+        });
+      }, observerOptions);
+
+      // Observe all modules
+      document.querySelectorAll('.module').forEach(module => {
+        observer.observe(module);
+      });
+    </script>
+
+    <!-- MathJax for math notation -->
     <script>
       window.MathJax = {
         tex: {
