@@ -149,19 +149,33 @@ Additional resources (used in Lesson 3 slides):
 
 ### **Module 5: Multi-Modal AI — Seeing + Reading Together**
 
-**Duration:** 2 weeks
+**Duration:** 2 weeks  
 **Goal:** Show how AI connects vision and language.
 
-**Topics:**
+***Lesson 8:***
+* The vision-language challenge: connecting images and text (different modalities, different representations).
+* Pre-CLIP era: CNN + RNN image captioning (Show and Tell, Show Attend and Tell).
+* Visual attention mechanism deep dive: computing attention scores, softmax normalization, weighted context vectors.
+* Soft attention vs hard attention: why soft attention won (differentiability, end-to-end training).
+* The paradigm shift: from task-specific models to shared embedding spaces.
+* CLIP architecture: dual encoders (image encoder + text encoder) projecting to a shared space.
+* Contrastive learning: InfoNCE loss, batch-based training, cosine similarity, temperature scaling.
+* Zero-shot image classification: classifying images using text prompts without task-specific training.
+* Image-text retrieval: finding matching images/text via embedding similarity.
+* Building on CLIP: modern image captioning (CLIP + LM), text-to-image generation (CLIP + Diffusion).
+* CLIP in production: Stable Diffusion, DALL·E 2, and the modern multimodal ecosystem.
 
-* What is Multi-Modal Learning? (e.g., “AI that describes what it sees”)
-* CLIP concept (match text & image embeddings)
-* Image Captioning (encoder-decoder idea)
-* Visual Question Answering — combine text + vision inputs
+**Hands-on / Mini-project:**
+👉 Use OpenAI CLIP to perform zero-shot classification on custom images.
+👉 Build a text-to-image retrieval system using CLIP embeddings.
+👉 Experiment with prompt engineering to improve zero-shot accuracy.
+👉 Visualize CLIP embeddings with t-SNE/UMAP to see image-text clustering.
 
-**Hands-on:**
-👉 Use CLIP to find similar images from text
-👉 Build a simple image captioning app (with pre-trained models)
+***Lesson 8 Homework:***
+* Implement zero-shot classification with CLIP on a custom dataset (e.g., your own photos).
+* Compare accuracy with different prompt templates ("a photo of a {}", "an image of a {}", etc.).
+* Build a simple image search app: given a text query, return the most similar images from a collection.
+* Optional: Fine-tune a CLIP-based captioning model or experiment with CLIP guidance for image generation.
 
 ---
 
@@ -209,6 +223,7 @@ Additional resources (used in Lesson 3 slides):
   - `slides/lesson5.html` — Lesson 5: Variational Autoencoders & Latent PCA (convolutional VAE for faces, β-ELBO loss, KL divergence, latent PCA controls, and perceptual vs MSE reconstruction losses)
   - `slides/lesson6.html` — Lesson 6: NLP — From Words to Embeddings (tokenization, vocabularies, embeddings, Word2Vec/CBOW/Skip-gram intuition, and a simple sentiment classifier)
   - `slides/lesson7.html` — Lesson 7: Transformers, Attention & Pre-trained Models (self-attention, multi-head attention, Transformer architecture, BERT, GPT, and using pre-trained models)
+  - `slides/lesson8.html` — Lesson 8: From Vision–Language Models to CLIP (CNN+RNN captioning, visual attention, CLIP architecture, contrastive learning, zero-shot classification, and text-to-image generation)
 
 ---
 
