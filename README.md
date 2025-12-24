@@ -1,5 +1,7 @@
 ## Picsart Academy Deep Learning 2025
 
+A practical introduction to Deep Learning with PyTorch — from neurons and CNNs to Transformers and multi-modal vision–language models like CLIP.
+
 [Slides are available here](https://agasy18.github.io/pa-academy-ai-2025)
 
 ### **Module 1: Deep Learning Fundamentals**
