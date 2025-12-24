@@ -1,0 +1,1584 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 8 — From Vision–Language Models to CLIP and Beyond</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
+    <style>
+      .code-small pre code { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; align-items: flex-start; }
+      .two-column > div { flex: 1; }
+      .small { font-size: 0.9em; }
+      .highlight-box { background: #e8f4f8; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+      .transition-slide { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+      .transition-slide h2 { color: white; }
+      .transition-slide p { color: rgba(255,255,255,0.9); }
+      .warning-box { background: #fff3cd; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #ffc107; }
+      .success-box { background: #d4edda; padding: 1rem; border-radius: 8px; margin: 1rem 0; border-left: 4px solid #28a745; }
+      .similarity-matrix { font-family: monospace; font-size: 0.7em; }
+      .timeline-item { background: linear-gradient(90deg, #e8f4f8 0%, transparent 100%); padding: 0.5rem 1rem; margin: 0.3rem 0; border-left: 3px solid #667eea; }
+      /* Large graphviz diagrams */
+      .graphviz-large .graphviz svg { max-width: 95%; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <!-- ========================================== -->
+        <!-- PART 1: INTRODUCTION & MOTIVATION         -->
+        <!-- ========================================== -->
+
+        <section>
+          <h2>Lesson 8: From Vision–Language Models to CLIP</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand the challenge of connecting images and language.</li>
+            <li class="fragment">Trace the evolution from CNN+RNN captioning to modern CLIP.</li>
+            <li class="fragment">Explain contrastive learning and why it enables zero-shot transfer.</li>
+            <li class="fragment">Use CLIP for image classification, retrieval, and multimodal tasks.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>The Original Problem</h3>
+          <p class="small">Teaching machines to understand <em>both</em> images and language.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph vision_language {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  img [label="🖼️ Image\n(pixels)", shape=box];
+  vision [label="Visual\nUnderstanding"];
+  text [label="📝 Text\n(tokens)", shape=box];
+  lang [label="Language\nGeneration"];
+  q [label="???"];
+
+  img -> vision;
+  vision -> q;
+  text -> lang;
+  lang -> q;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>Visual understanding:</strong> What objects, scenes, actions are in the image?</li>
+            <li class="fragment"><strong>Language generation:</strong> How do we describe it in natural language?</li>
+            <li class="fragment"><strong>The hard part:</strong> Bridging two very different modalities!</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Why Is This Hard?</h3>
+          <p class="small">Images and text live in completely different spaces:</p>
+          <div class="two-column small">
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px;">
+              <h4>Images</h4>
+              <ul>
+                <li class="fragment">Dense pixel grids (e.g., 224×224×3)</li>
+                <li class="fragment">Continuous values (0–255)</li>
+                <li class="fragment">Spatial relationships matter</li>
+                <li class="fragment">No discrete vocabulary</li>
+              </ul>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Text</h4>
+              <ul>
+                <li class="fragment">Discrete tokens (words/subwords)</li>
+                <li class="fragment">Finite vocabulary (~30K–100K)</li>
+                <li class="fragment">Sequential order matters</li>
+                <li class="fragment">Highly compositional</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>Key insight:</strong> We need a way to map both modalities into a <em>shared representation space</em>.
+          </p>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 1: Pre-CLIP Era</h2>
+          <p>Task-specific models (2012–2019)</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 2: PRE-CLIP ERA                      -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Classical Image Captioning</h3>
+          <p class="small">The dominant paradigm before CLIP: CNN encoder + RNN decoder.</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph captioning {
+  rankdir=LR;
+  node [fontsize=14, shape=box, style=rounded, width=1.5, height=0.8];
+  edge [penwidth=2];
+  graph [pad="0.5", nodesep="0.8", ranksep="1.2"];
+
+  img [label="Image\n224×224×3"];
+  cnn [label="CNN\n(ResNet/VGG)"];
+  feat [label="Feature Vector\n2048-d"];
+  rnn [label="RNN/LSTM\nDecoder"];
+  cap [label="Caption\n\"A cat sitting\non a mat\""];
+
+  img -> cnn -> feat -> rnn -> cap;
+}
+          </code></pre>
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Image encoder:</strong> Pre-trained CNN extracts visual features.</li>
+            <li class="fragment"><strong>Text decoder:</strong> RNN/LSTM generates words one at a time.</li>
+            <li class="fragment"><strong>Training:</strong> Supervised on (image, caption) pairs.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Show and Tell (2015)</h3>
+          <p class="small">Google's influential image captioning model.</p>
+          <div class="highlight-box small">
+            <strong>Architecture:</strong> GoogLeNet (Inception) → LSTM → Caption
+          </div>
+          <pre class="code-small"><code class="language-python"># Simplified PyTorch-style pseudocode
+class ShowAndTell(nn.Module):
+    def __init__(self, embed_dim, hidden_dim, vocab_size):
+        self.cnn = models.resnet50(pretrained=True)
+        self.cnn.fc = nn.Linear(2048, embed_dim)  # project to embed
+        self.lstm = nn.LSTM(embed_dim, hidden_dim, batch_first=True)
+        self.fc_out = nn.Linear(hidden_dim, vocab_size)
+    
+    def forward(self, image, captions):
+        # Encode image → single vector
+        img_features = self.cnn(image)  # (batch, embed_dim)
+        
+        # Decode caption word by word
+        embeddings = self.embed(captions)  # (batch, seq_len, embed_dim)
+        lstm_out, _ = self.lstm(embeddings, img_features)
+        return self.fc_out(lstm_out)</code></pre>
+        </section>
+
+        <section>
+          <h3>Show and Tell: Architecture Diagram</h3>
+          <img src="assets/show_and_tell_architecture.png" alt="Show and Tell Architecture" style="max-height: 550px;">
+          <p class="small">
+            The CNN (e.g., GoogLeNet/VGG) extracts a fixed-size feature vector from the image, which initializes the LSTM hidden state. The LSTM then generates the caption word by word.
+          </p>
+        </section>
+
+        <section>
+          <h3>Show, Attend and Tell (2015)</h3>
+          <p class="small">Added <strong>visual attention</strong> — the decoder can focus on different image regions.</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph attend_tell {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+
+  img [label="Image"];
+  cnn [label="CNN\n(no pooling)"];
+  grid [label="Spatial Features\n14×14×512"];
+  attn [label="Attention\nMechanism"];
+  context [label="Context c_t"];
+  lstm [label="LSTM"];
+  word [label="Next Word"];
+
+  img -> cnn -> grid -> attn;
+  attn -> context [label="weighted sum"];
+  context -> lstm -> word;
+  lstm -> attn [style=dashed, color=blue, constraint=false, xlabel="h_{t-1}"];
+}
+          </code></pre>
+          </div>
+          <p class="small fragment">
+            <strong>Key idea:</strong> The LSTM's <em>previous</em> hidden state tells attention "what to look for". Attention returns a context vector that helps predict the next word.
+          </p>
+        </section>
+
+        <section>
+          <h3>Visual Attention in Action</h3>
+          <img src="assets/show_attend_tell_attention.png" alt="Show Attend and Tell Attention Visualization" style="max-height: 500px;">
+          <p class="small">
+            When generating each word, the model learns to focus on the relevant image regions. White/bright areas show where the model "looks" when generating that particular word.
+          </p>
+        </section>
+
+        <section>
+          <h3>The Recurrent Loop: LSTM ↔ Attention</h3>
+          <p class="small">Attention and LSTM work together in a <strong>recurrent loop</strong> at each timestep:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph recurrent_loop {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+  newrank=true;
+  
+  subgraph cluster_fixed {
+    label="Computed Once";
+    style=filled; fillcolor="#fff3e0";
+    features [label="Image Features\n(L regions)"];
+  }
+  
+  subgraph cluster_recurrent {
+    label="Recurrent Loop (repeated for each word)";
+    style=filled; fillcolor="#e3f2fd";
+    color="#1976d2"; penwidth=2;
+    
+    h_prev [label="h_{t-1}", style=filled, fillcolor="#bbdefb"];
+    attn [label="Attention"];
+    context [label="Context c_t"];
+    word [label="Word w_t"];
+    lstm [label="LSTM"];
+    h_next [label="h_t", style=filled, fillcolor="#c8e6c9"];
+    output [label="Predict\nNext Word"];
+    
+    {rank=same; h_prev; word}
+    {rank=same; attn}
+    {rank=same; context}
+    {rank=same; lstm}
+    {rank=same; h_next; output}
+  }
+  
+  features -> attn;
+  h_prev -> attn;
+  word -> lstm;
+  attn -> context -> lstm;
+  h_prev -> lstm [style=dashed, label="state"];
+  lstm -> h_next;
+  h_next -> output;
+  h_next -> h_prev [style=dashed, color="#1976d2", penwidth=2, constraint=false, xlabel="loop back"];
+}
+          </code></pre>
+          </div>
+          <p class="small fragment">
+            <strong>Blue box:</strong> Repeated for each word. <strong>Orange box:</strong> Computed once from image.
+          </p>
+        </section>
+
+        <section>
+          <h3>Timeline of One Decoding Step</h3>
+          <p class="small">At timestep \(t\), generating word \(t+1\):</p>
+          <div class="small">
+            <div class="timeline-item fragment">
+              <strong>1.</strong> Start with previous hidden state \(h_{t-1}\) (from step \(t-1\))
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2.</strong> Attention uses \(h_{t-1}\) + image features → compute context \(c_t\)
+            </div>
+            <div class="timeline-item fragment">
+              <strong>3.</strong> Concatenate: input = [word embedding \(w_t\), context \(c_t\)]
+            </div>
+            <div class="timeline-item fragment">
+              <strong>4.</strong> LSTM takes input + \(h_{t-1}\) → produces new \(h_t\)
+            </div>
+            <div class="timeline-item fragment">
+              <strong>5.</strong> Use \(h_t\) to predict next word (softmax over vocabulary)
+            </div>
+            <div class="timeline-item fragment">
+              <strong>6.</strong> Move to step \(t+1\): \(h_t\) becomes the new "previous" state
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>The loop continues</strong> until we generate [END] token or max length.
+          </p>
+        </section>
+
+        <section>
+          <h3>Inside the Attention Mechanism</h3>
+          <p class="small">What happens inside the attention block? Three key steps:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph attention_detail {
+  rankdir=LR;
+  node [fontsize=12, shape=box, style=rounded];
+  
+  subgraph cluster_input {
+    label="Inputs";
+    style=filled; fillcolor="#e3f2fd";
+    features [label="Image Features\na₁, a₂, ..., aₗ\n(L regions)"];
+    hidden [label="Previous State\nh_{t-1}"];
+  }
+  
+  subgraph cluster_attention {
+    label="Attention Computation";
+    style=filled; fillcolor="#fff3e0";
+    score [label="1. Score\nFunction"];
+    softmax [label="2. Softmax\nα = softmax(e)"];
+    weighted [label="3. Weighted\nSum"];
+  }
+  
+  context [label="Context\nVector c_t", style=filled, fillcolor="#e8f5e9"];
+  
+  features -> score;
+  hidden -> score;
+  score -> softmax -> weighted;
+  features -> weighted;
+  weighted -> context;
+}
+          </code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Step 1: Compute Attention Scores</h3>
+          <p class="small">For each image region, compute a "relevance score" given the current decoder state:</p>
+          <div class="highlight-box small">
+            \[
+              e_{ti} = f_{att}(a_i, h_{t-1})
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>\(a_i\)</strong>: Feature vector for image region \(i\) (from CNN)</li>
+            <li class="fragment"><strong>\(h_{t-1}\)</strong>: Previous LSTM hidden state (what we've generated so far)</li>
+            <li class="fragment"><strong>\(e_{ti}\)</strong>: Scalar score — "how relevant is region \(i\) for generating word \(t\)?"</li>
+          </ul>
+          <pre class="fragment code-small"><code class="language-python"># Common scoring function: MLP
+def attention_score(a_i, h_t):
+    # Combine image feature and hidden state
+    combined = torch.tanh(W_a @ a_i + W_h @ h_t + b)
+    # Project to scalar score
+    e = v.T @ combined  # scalar
+    return e</code></pre>
+        </section>
+
+        <section>
+          <h3>Step 2: Softmax → Attention Weights</h3>
+          <p class="small">Convert scores to a probability distribution over image regions:</p>
+          <div class="highlight-box small">
+            \[
+              \alpha_{ti} = \frac{\exp(e_{ti})}{\sum_{j=1}^{L} \exp(e_{tj})}
+            \]
+          </div>
+          <div class="two-column small">
+            <div>
+              <p><strong>Properties of \(\alpha\):</strong></p>
+              <ul>
+                <li class="fragment">\(\alpha_{ti} \in [0, 1]\) for all regions</li>
+                <li class="fragment">\(\sum_{i=1}^{L} \alpha_{ti} = 1\) (sums to 1)</li>
+                <li class="fragment">Higher score → higher weight</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>Example (L=4 regions):</strong></p>
+              <pre class="fragment" style="font-size: 0.75em;">
+Scores e:    [2.1, 0.5, 0.8, -0.3]
+             ↓ softmax
+Weights α:   [0.62, 0.13, 0.17, 0.08]
+             ↑
+        Region 1 gets 62% attention</pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Step 3: Weighted Sum → Context Vector</h3>
+          <p class="small">Combine image features using attention weights:</p>
+          <div class="highlight-box small">
+            \[
+              c_t = \sum_{i=1}^{L} \alpha_{ti} \cdot a_i
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>\(c_t\)</strong>: Context vector — a "soft selection" of relevant image information</li>
+            <li class="fragment">Regions with high \(\alpha\) contribute more to the context</li>
+            <li class="fragment">This context is fed to the LSTM along with the previous word</li>
+          </ul>
+          <pre class="fragment code-small"><code class="language-python"># Weighted sum of image features
+def compute_context(features, alpha):
+    """
+    features: (L, D) - L regions, D-dimensional each
+    alpha: (L,) - attention weights (sum to 1)
+    """
+    context = (alpha.unsqueeze(1) * features).sum(dim=0)  # (D,)
+    return context</code></pre>
+        </section>
+
+        <section>
+          <h3>Attention: The Complete Picture</h3>
+          <p class="small">Putting it all together for one decoding step:</p>
+          <pre class="code-small"><code class="language-python">class Attention(nn.Module):
+    def __init__(self, feature_dim, hidden_dim, attention_dim):
+        self.W_a = nn.Linear(feature_dim, attention_dim)   # project image features
+        self.W_h = nn.Linear(hidden_dim, attention_dim)    # project hidden state
+        self.v = nn.Linear(attention_dim, 1)               # score to scalar
+    
+    def forward(self, features, hidden):
+        # features: (batch, L, feature_dim) — L image regions
+        # hidden: (batch, hidden_dim) — LSTM state
+        
+        # Step 1: Compute scores for each region
+        scores = self.v(torch.tanh(
+            self.W_a(features) + self.W_h(hidden).unsqueeze(1)
+        ))  # (batch, L, 1)
+        
+        # Step 2: Softmax → attention weights
+        alpha = F.softmax(scores.squeeze(2), dim=1)  # (batch, L)
+        
+        # Step 3: Weighted sum → context vector
+        context = (alpha.unsqueeze(2) * features).sum(dim=1)  # (batch, feature_dim)
+        
+        return context, alpha</code></pre>
+        </section>
+
+        <section>
+          <h3>How Is Attention Trained?</h3>
+          <p class="small">The attention mechanism is trained <strong>end-to-end</strong> with backpropagation:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph training {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+  edge [fontsize=9];
+  
+  img [label="Image"];
+  cnn [label="CNN"];
+  attn [label="Attention\n(W_a, W_h, v)"];
+  lstm [label="LSTM"];
+  output [label="Softmax\nover vocab"];
+  loss [label="Cross-Entropy\nLoss", style=filled, fillcolor="#ffcdd2"];
+  target [label="Ground Truth\nCaption"];
+  
+  img -> cnn -> attn -> lstm -> output -> loss;
+  target -> loss;
+  
+  loss -> output -> lstm -> attn -> cnn [style=dashed, color=red, label="gradients"];
+}
+          </code></pre>
+          </div>
+          <p class="small fragment">
+            <strong>Key insight:</strong> All operations (linear layers, tanh, softmax, weighted sum) are differentiable!
+          </p>
+        </section>
+
+        <section>
+          <h3>Training Attention: Step by Step</h3>
+          <p class="small">The training loop for image captioning with attention:</p>
+          <pre class="code-small"><code class="language-python">for images, captions in dataloader:
+    # 1. Extract image features (L regions)
+    features = cnn(images)  # (batch, L, feature_dim)
+    
+    # 2. Initialize LSTM hidden state
+    hidden = init_hidden(features.mean(dim=1))
+    
+    loss = 0
+    for t in range(caption_length):
+        # 3. Compute attention weights
+        context, alpha = attention(features, hidden)
+        
+        # 4. LSTM step: input = [previous word embedding, context]
+        input_t = torch.cat([word_embed(captions[:, t]), context], dim=1)
+        hidden = lstm(input_t, hidden)
+        
+        # 5. Predict next word
+        logits = output_layer(hidden)  # (batch, vocab_size)
+        
+        # 6. Cross-entropy loss against ground truth
+        loss += F.cross_entropy(logits, captions[:, t+1])
+    
+    # 7. Backpropagate through everything (including attention!)
+    loss.backward()
+    optimizer.step()</code></pre>
+        </section>
+
+        <section>
+          <h3>What Does Backprop Through Attention Look Like?</h3>
+          <p class="small">Gradients flow back through the attention computation:</p>
+          <div class="highlight-box small">
+            <strong>Forward:</strong> \(c_t = \sum_i \alpha_i \cdot a_i\) where \(\alpha = \text{softmax}(e)\) and \(e = v^\top \tanh(W_a a + W_h h)\)
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Loss gradient</strong> \(\frac{\partial L}{\partial c_t}\) comes from the LSTM/output layer</li>
+            <li class="fragment"><strong>Backprop through weighted sum:</strong> \(\frac{\partial L}{\partial \alpha_i} = \frac{\partial L}{\partial c_t} \cdot a_i\)</li>
+            <li class="fragment"><strong>Backprop through softmax:</strong> gradients flow to scores \(e_i\)</li>
+            <li class="fragment"><strong>Backprop through score function:</strong> updates \(W_a, W_h, v\)</li>
+          </ul>
+          <p class="small fragment">
+            <strong>Result:</strong> The model learns <em>which regions to attend to</em> by minimizing caption prediction loss!
+          </p>
+        </section>
+
+        <section>
+          <h3>Attention Learns Without Supervision</h3>
+          <p class="small">We never tell the model "look here for this word" — it discovers this on its own!</p>
+          <div class="two-column small">
+            <div>
+              <p><strong>Training signal:</strong></p>
+              <ul>
+                <li class="fragment">Only supervision: (image, caption) pairs</li>
+                <li class="fragment">No bounding boxes</li>
+                <li class="fragment">No region-word alignments</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>What attention learns:</strong></p>
+              <ul>
+                <li class="fragment">Look at dog when saying "dog"</li>
+                <li class="fragment">Look at grass when saying "field"</li>
+                <li class="fragment">Emerges from optimizing caption loss!</li>
+              </ul>
+            </div>
+          </div>
+          <div class="success-box small fragment">
+            <strong>This is the magic of end-to-end learning:</strong> attention weights become interpretable even though we only trained on word prediction.
+          </div>
+        </section>
+
+        <section>
+          <h3>Why Attention Works</h3>
+          <p class="small">Attention solves the "information bottleneck" problem:</p>
+          <div class="two-column small">
+            <div style="background: #ffebee; padding: 1rem; border-radius: 8px;">
+              <h4>Without Attention</h4>
+              <ul>
+                <li class="fragment">Entire image → single vector</li>
+                <li class="fragment">All info must fit in one embedding</li>
+                <li class="fragment">Same context for every word</li>
+                <li class="fragment">Hard to describe complex scenes</li>
+              </ul>
+            </div>
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 8px;">
+              <h4>With Attention</h4>
+              <ul>
+                <li class="fragment">Keep all L region features</li>
+                <li class="fragment">Dynamically select what's relevant</li>
+                <li class="fragment">Different context for each word</li>
+                <li class="fragment">"Look" at bird for "bird", water for "water"</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>This same idea powers Transformers!</strong> (Lesson 7)
+          </p>
+        </section>
+
+        <section>
+          <h3>Two Ways to Apply Attention Weights</h3>
+          <p class="small">We've computed attention weights \(\alpha_i\) for each region. But how do we use them?</p>
+          <p class="small">The "Show, Attend and Tell" paper explored <strong>two approaches</strong>:</p>
+          <div class="two-column small">
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 8px;">
+              <h4>Soft Attention</h4>
+              <p><strong>Weighted average</strong> of all regions:</p>
+              <div class="highlight-box" style="background: white;">
+                \[ c_t = \sum_{i=1}^{L} \alpha_i \cdot a_i \]
+              </div>
+              <ul>
+                <li class="fragment">All regions contribute (with weights)</li>
+                <li class="fragment">✅ Fully differentiable</li>
+                <li class="fragment">✅ Train with standard backprop</li>
+                <li class="fragment">Smoother, more stable training</li>
+              </ul>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Hard Attention</h4>
+              <p><strong>Sample ONE</strong> region:</p>
+              <div class="highlight-box" style="background: white;">
+                \[ c_t = a_{\hat{i}} \text{ where } \hat{i} \sim \text{Cat}(\alpha) \]
+              </div>
+              <ul>
+                <li class="fragment">Only one region contributes</li>
+                <li class="fragment">❌ NOT differentiable (sampling)</li>
+                <li class="fragment">⚠️ Needs REINFORCE algorithm</li>
+                <li class="fragment">More interpretable but noisy</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Soft vs Hard: Which One Is Used?</h3>
+          <p class="small">In practice, <strong>soft attention</strong> is almost always used. Here's why:</p>
+          <table class="small">
+            <tr><th></th><th>Soft Attention</th><th>Hard Attention</th></tr>
+            <tr class="fragment">
+              <td><strong>Training</strong></td>
+              <td>Standard backprop ✅</td>
+              <td>REINFORCE (high variance) ⚠️</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Gradients</strong></td>
+              <td>Smooth, stable</td>
+              <td>Noisy, needs baselines</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Computation</strong></td>
+              <td>Deterministic</td>
+              <td>Stochastic (need multiple samples)</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Interpretation</strong></td>
+              <td>"Soft" focus on multiple regions</td>
+              <td>"Hard" focus on one region</td>
+            </tr>
+          </table>
+          <div class="success-box small fragment">
+            <strong>Transformer attention = Soft attention!</strong> All Q-K pairs contribute with learned weights.
+          </div>
+        </section>
+
+        <section>
+          <h3>Attention Over Image Regions</h3>
+          <p class="small">The model learns where to look when generating each word:</p>
+          <div class="two-column">
+            <div style="text-align: center;">
+              <p><strong>"A <span style="color: #e74c3c;">bird</span> flying over water"</strong></p>
+              <pre style="font-size: 0.6em;">
+Image Grid (14×14):
+┌───┬───┬───┬───┐
+│   │   │ ▓ │ ▓ │ ← high α for
+│   │   │ ▓ │ ▓ │   "bird" region
+├───┼───┼───┼───┤
+│   │   │   │   │
+│   │   │   │   │
+├───┼───┼───┼───┤
+│ ░ │ ░ │ ░ │ ░ │ ← high α for
+│ ░ │ ░ │ ░ │ ░ │   "water" region
+└───┴───┴───┴───┘</pre>
+            </div>
+            <div class="small">
+              <p><strong>Soft attention in action:</strong></p>
+              <ul>
+                <li class="fragment">When generating "bird": α is high for bird regions</li>
+                <li class="fragment">When generating "water": α shifts to water regions</li>
+                <li class="fragment">All regions contribute, but with different weights</li>
+              </ul>
+              <p class="fragment">
+                <strong>This same idea powers Transformers!</strong> (Lesson 7)
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>Limitations of Task-Specific Models</h3>
+          <div class="warning-box small">
+            These early models had significant limitations:
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Fixed vocabulary:</strong> Can only generate words seen in training data.</li>
+            <li class="fragment"><strong>Narrow task:</strong> Trained for captioning only — can't do retrieval, VQA, etc.</li>
+            <li class="fragment"><strong>Poor generalization:</strong> Struggles with novel compositions ("a cat riding a skateboard").</li>
+            <li class="fragment"><strong>No semantic alignment:</strong> Image and text spaces are separate — connected only through the decoder.</li>
+            <li class="fragment"><strong>Expensive labels:</strong> Requires manually annotated (image, caption) pairs.</li>
+          </ul>
+          <p class="small fragment">
+            <strong>Question:</strong> Can we learn a more <em>general</em> connection between vision and language?
+          </p>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)">
+          <h2>Part 2: The Key Insight</h2>
+          <p>From task-specific to representation learning</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 3: REPRESENTATION LEARNING SHIFT     -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>The Paradigm Shift</h3>
+          <p class="small">Researchers changed the question they were asking:</p>
+          <div class="two-column">
+            <div style="background: #ffebee; padding: 1rem; border-radius: 8px;">
+              <h4>Old Question</h4>
+              <p class="small">"Can we generate captions for images?"</p>
+              <p class="small fragment">→ Task-specific, narrow</p>
+            </div>
+            <div style="background: #e8f5e9; padding: 1rem; border-radius: 8px;">
+              <h4>New Question</h4>
+              <p class="small">"Can we learn a shared <em>meaning space</em> for images and text?"</p>
+              <p class="small fragment">→ General-purpose, transferable</p>
+            </div>
+          </div>
+          <p class="small fragment">
+            This shift from <strong>task-specific training</strong> to <strong>representation learning</strong> leads directly to CLIP.
+          </p>
+        </section>
+
+        <section>
+          <h3>What Is a Shared Embedding Space?</h3>
+          <p class="small">The goal: map images and text to the <em>same</em> vector space.</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph shared_space {
+  rankdir=LR;
+  node [fontsize=10, shape=box, style=rounded];
+
+  subgraph cluster_input {
+    label="Inputs";
+    style=filled; fillcolor="#f5f5f5";
+    img1 [label="🐱 cat photo"];
+    img2 [label="🐕 dog photo"];
+    txt1 [label="\"a cat\""];
+    txt2 [label="\"a dog\""];
+  }
+
+  subgraph cluster_space {
+    label="Shared Embedding Space";
+    style=filled; fillcolor="#e8f4f8";
+    node [shape=circle, width=0.3];
+    e1 [label="●"];
+    e2 [label="●"];
+    e3 [label="○"];
+    e4 [label="○"];
+  }
+
+  img1 -> e1 [label="encode"];
+  txt1 -> e3 [label="encode"];
+  img2 -> e2 [label="encode"];
+  txt2 -> e4 [label="encode"];
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment">Cat image 🐱 and text "a cat" should be <strong>close</strong> in the space.</li>
+            <li class="fragment">Cat image 🐱 and text "a dog" should be <strong>far apart</strong>.</li>
+            <li class="fragment">We can now compare <em>any</em> image to <em>any</em> text via distance/similarity!</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Visualizing the Shared Embedding Space</h3>
+          <img src="assets/Comparison-of-F-CLIP-and-CLIP-Image-Space-T-SNE-projection-We-observe-better-clustering.png" alt="CLIP Embedding Space t-SNE Visualization" style="max-height: 480px;">
+          <p class="small">
+            t-SNE projection of CLIP embeddings. Images and their corresponding text descriptions cluster together in the shared space. Different semantic categories form distinct clusters.
+          </p>
+        </section>
+
+        <section>
+          <h3>Why a Shared Space Is Powerful</h3>
+          <p class="small">With a shared embedding space, many tasks become simple:</p>
+          <table class="small">
+            <tr><th>Task</th><th>How It Works</th></tr>
+            <tr class="fragment">
+              <td><strong>Image → Text</strong></td>
+              <td>Find text embeddings closest to image embedding</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Text → Image</strong></td>
+              <td>Find image embeddings closest to text embedding</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Classification</strong></td>
+              <td>Compare image to text descriptions of each class</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Similarity</strong></td>
+              <td>Directly measure distance between any image and text</td>
+            </tr>
+          </table>
+          <div class="success-box small fragment">
+            <strong>Key insight:</strong> No task-specific training needed! The representation does the work.
+          </div>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
+          <h2>Part 3: CLIP</h2>
+          <p>Contrastive Language–Image Pretraining</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 4: CLIP ARCHITECTURE                 -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>CLIP: The Core Idea</h3>
+          <p class="small"><strong>C</strong>ontrastive <strong>L</strong>anguage–<strong>I</strong>mage <strong>P</strong>retraining (OpenAI, 2021)</p>
+          <div class="highlight-box small">
+            CLIP does <strong>not</strong> generate text or images.<br>
+            CLIP learns: <em>A shared embedding space where matching image–text pairs are close, and non-matching pairs are far apart.</em>
+          </div>
+          <pre><code class="language-dot" data-graphviz>
+digraph clip_core {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  img [label="Image"];
+  txt [label="Text"];
+  img_enc [label="Image Encoder\n(ResNet/ViT)"];
+  txt_enc [label="Text Encoder\n(Transformer)"];
+  img_emb [label="Image\nEmbedding", shape=ellipse];
+  txt_emb [label="Text\nEmbedding", shape=ellipse];
+  sim [label="Cosine\nSimilarity", shape=diamond];
+
+  img -> img_enc -> img_emb;
+  txt -> txt_enc -> txt_emb;
+  img_emb -> sim;
+  txt_emb -> sim;
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>CLIP Architecture Overview</h3>
+          <img src="assets/clip_architecture.png" alt="CLIP Architecture Diagram" style="max-height: 520px;">
+          <p class="small">
+            <strong>Left:</strong> Image and text encoders project inputs to a shared embedding space.<br>
+            <strong>Right:</strong> The N×N similarity matrix where diagonal entries (matching pairs) are maximized during training.
+          </p>
+        </section>
+
+        <section>
+          <h3>CLIP Architecture: Dual Encoders</h3>
+          <p class="small">CLIP uses two separate encoders that project to the same space:</p>
+          <div class="two-column small">
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px;">
+              <h4>Image Encoder</h4>
+              <ul>
+                <li class="fragment"><strong>Options:</strong> ResNet-50 or Vision Transformer (ViT)</li>
+                <li class="fragment"><strong>Input:</strong> Image (224×224 or larger)</li>
+                <li class="fragment"><strong>Output:</strong> 512-d or 768-d embedding</li>
+                <li class="fragment">ViT-L/14 is the strongest variant</li>
+              </ul>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Text Encoder</h4>
+              <ul>
+                <li class="fragment"><strong>Architecture:</strong> 12-layer Transformer</li>
+                <li class="fragment"><strong>Input:</strong> Tokenized text (max 77 tokens)</li>
+                <li class="fragment"><strong>Output:</strong> Same dimension as image encoder</li>
+                <li class="fragment">Uses [EOS] token embedding as output</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>Critical:</strong> Both encoders output vectors of the <em>same</em> dimension!
+          </p>
+        </section>
+
+        <section>
+          <h3>CLIP Training Data</h3>
+          <p class="small">CLIP was trained on a massive dataset of image-text pairs:</p>
+          <div class="highlight-box small">
+            <strong>WebImageText (WIT):</strong> 400 million (image, text) pairs from the internet
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Weakly supervised:</strong> Alt-text, captions, titles — not manually annotated.</li>
+            <li class="fragment"><strong>Diverse:</strong> Covers a huge range of concepts, objects, scenes, activities.</li>
+            <li class="fragment"><strong>Noisy:</strong> Not all pairs are perfect matches — but scale compensates!</li>
+          </ul>
+          <table class="small fragment">
+            <tr><th>Dataset</th><th>Size</th><th>Type</th></tr>
+            <tr><td>COCO Captions</td><td>~330K images</td><td>Curated</td></tr>
+            <tr><td>Visual Genome</td><td>~100K images</td><td>Curated</td></tr>
+            <tr><td>CLIP WIT</td><td>~400M pairs</td><td>Web-scraped</td></tr>
+          </table>
+          <p class="small fragment">1000× more data than previous vision-language datasets!</p>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #fa709a 0%, #fee140 100%)">
+          <h2>Part 4: Contrastive Learning</h2>
+          <p>The training objective that makes CLIP work</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 5: CONTRASTIVE TRAINING              -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Contrastive Learning: The Intuition</h3>
+          <p class="small">Learn by comparing: push similar things together, dissimilar things apart.</p>
+          <div class="two-column">
+            <div style="text-align: center;">
+              <p><strong>Before Training</strong></p>
+              <pre style="font-size: 0.7em;">
+Embedding Space:
+      ○ img1
+   ●txt1    ●txt2
+         ○ img2
+    ○ img3
+       ●txt3
+(scattered randomly)</pre>
+            </div>
+            <div style="text-align: center;">
+              <p><strong>After Training</strong></p>
+              <pre style="font-size: 0.7em;">
+Embedding Space:
+   ○●  (img1, txt1)
+   
+        ○●  (img2, txt2)
+   
+   ○●  (img3, txt3)
+(matching pairs cluster)</pre>
+            </div>
+          </div>
+          <p class="small fragment">
+            <strong>No labels needed!</strong> The pairing itself provides the supervision signal.
+          </p>
+        </section>
+
+        <section>
+          <h3>Batch-Based Contrastive Training</h3>
+          <p class="small">In each training batch of \(N\) image-text pairs:</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph batch {
+  rankdir=LR;
+  node [fontsize=10, shape=box, style=rounded];
+
+  subgraph cluster_batch {
+    label="Batch of N pairs";
+    style=filled; fillcolor="#f5f5f5";
+    
+    i1 [label="img₁"]; t1 [label="txt₁"];
+    i2 [label="img₂"]; t2 [label="txt₂"];
+    i3 [label="img₃"]; t3 [label="txt₃"];
+    iN [label="img_N"]; tN [label="txt_N"];
+  }
+
+  matrix [label="N×N\nSimilarity\nMatrix", shape=box3d];
+
+  i1 -> matrix; i2 -> matrix; i3 -> matrix; iN -> matrix;
+  t1 -> matrix; t2 -> matrix; t3 -> matrix; tN -> matrix;
+}
+          </code></pre>
+          <ul class="small">
+            <li class="fragment"><strong>Positive pairs:</strong> (img₁, txt₁), (img₂, txt₂), ... on the diagonal</li>
+            <li class="fragment"><strong>Negative pairs:</strong> All other combinations (img₁, txt₂), (img₂, txt₁), etc.</li>
+            <li class="fragment">With batch size \(N\), we get \(N\) positives and \(N^2 - N\) negatives!</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>The Contrastive Matrix Visualized</h3>
+          <img src="assets/clip_contrastive_matrix.webp" alt="CLIP Contrastive Matrix" style="max-height: 480px;">
+          <p class="small">
+            For a batch of N image-text pairs, we compute an N×N matrix of cosine similarities. The training objective maximizes the diagonal (correct pairs) while minimizing off-diagonal entries (incorrect pairs).
+          </p>
+        </section>
+
+        <section>
+          <h3>Cosine Similarity</h3>
+          <p class="small">CLIP measures similarity using normalized dot products:</p>
+          <div class="highlight-box small">
+            \[
+              \text{sim}(\mathbf{I}, \mathbf{T}) = \frac{\mathbf{I} \cdot \mathbf{T}}{\|\mathbf{I}\| \|\mathbf{T}\|} = \cos(\theta)
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>Range:</strong> \([-1, +1]\)</li>
+            <li class="fragment"><strong>+1:</strong> Identical direction (perfect match)</li>
+            <li class="fragment"><strong>0:</strong> Orthogonal (unrelated)</li>
+            <li class="fragment"><strong>−1:</strong> Opposite direction (anti-correlated)</li>
+          </ul>
+          <pre class="fragment"><code class="language-python"># PyTorch: cosine similarity
+def cosine_similarity(I, T):
+    I_norm = I / I.norm(dim=-1, keepdim=True)
+    T_norm = T / T.norm(dim=-1, keepdim=True)
+    return I_norm @ T_norm.T  # (N, N) similarity matrix</code></pre>
+        </section>
+
+        <section>
+          <h3>The Similarity Matrix</h3>
+          <p class="small">For a batch, we compute all pairwise similarities:</p>
+          <div class="two-column">
+            <div style="text-align: center;">
+              <pre style="font-size: 0.65em;">
+Similarity Matrix (N=4):
+              txt₁  txt₂  txt₃  txt₄
+        ┌─────────────────────────┐
+  img₁  │ <strong style="color: #28a745;">0.92</strong>  0.15  0.08  0.21 │
+  img₂  │ 0.11  <strong style="color: #28a745;">0.89</strong>  0.23  0.05 │
+  img₃  │ 0.18  0.12  <strong style="color: #28a745;">0.95</strong>  0.14 │
+  img₄  │ 0.09  0.22  0.17  <strong style="color: #28a745;">0.88</strong> │
+        └─────────────────────────┘
+          Diagonal = correct pairs ✓</pre>
+            </div>
+            <div class="small">
+              <p><strong>Training objective:</strong></p>
+              <ul>
+                <li class="fragment">Maximize diagonal (matching pairs)</li>
+                <li class="fragment">Minimize off-diagonal (non-matching)</li>
+                <li class="fragment">This is a classification problem!</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>InfoNCE Loss (Contrastive Loss)</h3>
+          <p class="small">The loss function that makes contrastive learning work:</p>
+          <div class="highlight-box small">
+            \[
+              \mathcal{L}_{\text{image}} = -\frac{1}{N} \sum_{i=1}^{N} \log \frac{\exp(\text{sim}(I_i, T_i) / \tau)}{\sum_{j=1}^{N} \exp(\text{sim}(I_i, T_j) / \tau)}
+            \]
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>\(\tau\)</strong> (tau): Temperature parameter (learned, typically ~0.07)</li>
+            <li class="fragment"><strong>Numerator:</strong> Similarity of correct pair</li>
+            <li class="fragment"><strong>Denominator:</strong> Sum over all pairs in batch</li>
+            <li class="fragment"><strong>Interpretation:</strong> Cross-entropy loss treating it as N-way classification!</li>
+          </ul>
+          <p class="small fragment">
+            <strong>Key insight:</strong> Each image must "pick" its correct text from N choices (and vice versa).
+          </p>
+        </section>
+
+        <section>
+          <h3>Symmetric Loss</h3>
+          <p class="small">CLIP uses a symmetric loss — both directions matter:</p>
+          <div class="highlight-box small">
+            \[
+              \mathcal{L} = \frac{1}{2}(\mathcal{L}_{\text{image→text}} + \mathcal{L}_{\text{text→image}})
+            \]
+          </div>
+          <div class="two-column small">
+            <div>
+              <p><strong>Image → Text:</strong></p>
+              <p class="fragment">For each image, classify which text matches</p>
+              <p class="fragment">Rows of similarity matrix</p>
+            </div>
+            <div>
+              <p><strong>Text → Image:</strong></p>
+              <p class="fragment">For each text, classify which image matches</p>
+              <p class="fragment">Columns of similarity matrix</p>
+            </div>
+          </div>
+          <p class="small fragment">
+            This ensures embeddings work well for both retrieval directions.
+          </p>
+        </section>
+
+        <section>
+          <h3>CLIP Training: Code</h3>
+          <pre class="code-small"><code class="language-python">import torch
+import torch.nn.functional as F
+
+def clip_loss(image_embeddings, text_embeddings, temperature=0.07):
+    """
+    Compute CLIP contrastive loss.
+    image_embeddings: (N, D) normalized image vectors
+    text_embeddings: (N, D) normalized text vectors
+    """
+    # Compute similarity matrix: (N, N)
+    logits = (image_embeddings @ text_embeddings.T) / temperature
+    
+    # Labels: diagonal entries are correct pairs
+    labels = torch.arange(len(logits), device=logits.device)
+    
+    # Symmetric cross-entropy loss
+    loss_i2t = F.cross_entropy(logits, labels)      # image → text
+    loss_t2i = F.cross_entropy(logits.T, labels)    # text → image
+    
+    return (loss_i2t + loss_t2i) / 2</code></pre>
+          <p class="small fragment">
+            <strong>That's it!</strong> The simplicity of the loss is part of what makes CLIP so effective.
+          </p>
+        </section>
+
+        <section>
+          <h3>Why Contrastive Learning Is So Efficient</h3>
+          <img src="assets/1_ZHOfTxJ9bBeBjv2tDuGaXA.webp" alt="CLIP Training Efficiency Comparison" style="max-height: 420px;">
+          <div class="small">
+            <ul>
+              <li class="fragment"><strong>Bag of Words Contrastive</strong> (green): Up to 4× more efficient than transformers</li>
+              <li class="fragment"><strong>Bag of Words Prediction</strong> (orange): ~3× efficiency gain</li>
+              <li class="fragment"><strong>Transformer LM</strong> (blue): Baseline — slower to train</li>
+            </ul>
+            <p class="fragment">
+              <strong>Key insight:</strong> Contrastive objectives are much more sample-efficient than generative (prediction) objectives. CLIP gets more "learning" per image-text pair!
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3>Why Does Temperature (\(\tau\)) Matter?</h3>
+          <p class="small">Temperature controls the "sharpness" of the softmax distribution:</p>
+          <div class="two-column small">
+            <div>
+              <p><strong>High \(\tau\) (e.g., 1.0):</strong></p>
+              <ul>
+                <li class="fragment">Softer distribution</li>
+                <li class="fragment">Less confident predictions</li>
+                <li class="fragment">Easier gradients early in training</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>Low \(\tau\) (e.g., 0.01):</strong></p>
+              <ul>
+                <li class="fragment">Sharper distribution</li>
+                <li class="fragment">More confident predictions</li>
+                <li class="fragment">Harder negatives, better separation</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            CLIP learns \(\tau\) as a parameter, typically converging to ~0.07.
+          </p>
+          <pre class="fragment"><code class="language-python"># Temperature as learnable parameter
+self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+logits = logits * self.logit_scale.exp()</code></pre>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)">
+          <h2>Part 5: What CLIP Can Do</h2>
+          <p>Zero-shot transfer and beyond</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 6: CLIP CAPABILITIES                 -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Zero-Shot Image Classification</h3>
+          <p class="small">CLIP can classify images into <em>any</em> categories without training!</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph zero_shot {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  img [label="🐱 Test Image"];
+  img_enc [label="Image\nEncoder"];
+  img_emb [label="Image\nEmbedding", shape=ellipse];
+
+  t1 [label="\"a photo of a cat\""];
+  t2 [label="\"a photo of a dog\""];
+  t3 [label="\"a photo of a car\""];
+  txt_enc [label="Text\nEncoder"];
+  
+  compare [label="Cosine\nSimilarity", shape=diamond];
+  pred [label="Prediction:\ncat (0.92)"];
+
+  img -> img_enc -> img_emb -> compare;
+  t1 -> txt_enc -> compare;
+  t2 -> txt_enc -> compare;
+  t3 -> txt_enc -> compare;
+  compare -> pred;
+}
+          </code></pre>
+          <p class="small fragment">
+            <strong>No training on these classes!</strong> Just encode and compare.
+          </p>
+        </section>
+
+        <section>
+          <h3>Zero-Shot Classification: Visual Flow</h3>
+          <img src="assets/Zero-shot-image-classification-process-of-CLIP-model.png" alt="CLIP Zero-Shot Classification Process" style="max-height: 500px;">
+          <p class="small">
+            The image is encoded once, then compared against text embeddings of all possible class labels. The class with highest cosine similarity is selected as the prediction — no task-specific training required!
+          </p>
+        </section>
+
+        <section>
+          <h3>Zero-Shot Classification: Code</h3>
+          <pre class="code-small"><code class="language-python">import clip
+import torch
+from PIL import Image
+
+# Load CLIP model
+model, preprocess = clip.load("ViT-B/32", device="cuda")
+
+# Prepare image
+image = preprocess(Image.open("cat.jpg")).unsqueeze(0).to("cuda")
+
+# Define class prompts
+classes = ["a photo of a cat", "a photo of a dog", "a photo of a bird"]
+text = clip.tokenize(classes).to("cuda")
+
+# Encode both modalities
+with torch.no_grad():
+    image_features = model.encode_image(image)
+    text_features = model.encode_text(text)
+    
+    # Normalize and compute similarity
+    image_features /= image_features.norm(dim=-1, keepdim=True)
+    text_features /= text_features.norm(dim=-1, keepdim=True)
+    
+    similarity = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+    
+print(f"Predictions: {similarity[0]}")  # [0.92, 0.05, 0.03]</code></pre>
+        </section>
+
+        <section>
+          <h3>Prompt Engineering for CLIP</h3>
+          <p class="small">The text prompts matter! Better prompts = better zero-shot accuracy.</p>
+          <table class="small">
+            <tr><th>Simple Prompt</th><th>Better Prompt</th></tr>
+            <tr class="fragment"><td>"cat"</td><td>"a photo of a cat"</td></tr>
+            <tr class="fragment"><td>"airplane"</td><td>"a photo of an airplane, a type of aircraft"</td></tr>
+            <tr class="fragment"><td>"beach"</td><td>"a photo of a beach, with sand and ocean"</td></tr>
+          </table>
+          <div class="highlight-box small fragment">
+            <strong>Prompt ensembling:</strong> Average embeddings from multiple prompts!
+          </div>
+          <pre class="fragment"><code class="language-python"># Ensemble of prompts for "cat"
+prompts = [
+    "a photo of a cat",
+    "a photograph of a cat",
+    "an image of a cat",
+    "a picture of a cat",
+]
+text_embeddings = [model.encode_text(clip.tokenize(p)) for p in prompts]
+cat_embedding = torch.stack(text_embeddings).mean(dim=0)</code></pre>
+        </section>
+
+        <section>
+          <h3>Image-Text Retrieval</h3>
+          <p class="small">Given an image, find matching text (or vice versa):</p>
+          <div class="two-column small">
+            <div style="background: #e3f2fd; padding: 1rem; border-radius: 8px;">
+              <h4>Image → Text</h4>
+              <pre style="font-size: 0.75em;"><code class="language-python"># Find best caption for image
+image_emb = model.encode_image(image)
+text_embs = model.encode_text(all_texts)
+
+# Rank by similarity
+sims = image_emb @ text_embs.T
+best_idx = sims.argmax()
+print(all_texts[best_idx])</code></pre>
+            </div>
+            <div style="background: #fff3e0; padding: 1rem; border-radius: 8px;">
+              <h4>Text → Image</h4>
+              <pre style="font-size: 0.75em;"><code class="language-python"># Find best image for query
+text_emb = model.encode_text(query)
+image_embs = model.encode_image(all_images)
+
+# Rank by similarity
+sims = text_emb @ image_embs.T
+best_idx = sims.argmax()
+show(all_images[best_idx])</code></pre>
+            </div>
+          </div>
+          <p class="small fragment">
+            This powers image search engines, visual databases, and content moderation!
+          </p>
+        </section>
+
+        <section>
+          <h3>What CLIP Does NOT Do</h3>
+          <div class="warning-box small">
+            <strong>Important clarification:</strong> CLIP is NOT a generator!
+          </div>
+          <ul class="small">
+            <li class="fragment"><strong>No text generation:</strong> Cannot write captions from scratch.</li>
+            <li class="fragment"><strong>No image generation:</strong> Cannot create pixels from text.</li>
+            <li class="fragment"><strong>No decoder:</strong> Only outputs embedding vectors.</li>
+            <li class="fragment"><strong>No token-by-token:</strong> No autoregressive generation.</li>
+          </ul>
+          <div class="success-box small fragment">
+            <strong>Think of CLIP as a judge, not a creator.</strong><br>
+            It can score how well an image matches text, but it doesn't create either.
+          </div>
+        </section>
+
+        <section>
+          <h3>CLIP Zero-Shot vs Supervised</h3>
+          <p class="small">CLIP achieves strong performance without task-specific training:</p>
+          <table class="small">
+            <tr><th>Dataset</th><th>ResNet-50 (supervised)</th><th>CLIP ViT-L/14 (zero-shot)</th></tr>
+            <tr class="fragment"><td>ImageNet</td><td>76.1%</td><td>75.5%</td></tr>
+            <tr class="fragment"><td>CIFAR-10</td><td>95.6%</td><td>95.6%</td></tr>
+            <tr class="fragment"><td>Food-101</td><td>72.8%</td><td>92.9%</td></tr>
+            <tr class="fragment"><td>STL-10</td><td>96.3%</td><td>99.3%</td></tr>
+          </table>
+          <p class="small fragment">
+            <strong>Key insight:</strong> CLIP matches or beats supervised models on many datasets — <em>without seeing a single example from those datasets during training!</em>
+          </p>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #30cfd0 0%, #330867 100%)">
+          <h2>Part 6: Building on CLIP</h2>
+          <p>From embeddings to generation</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 7: BUILDING ON CLIP                  -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>CLIP as a Foundation</h3>
+          <p class="small">CLIP's aligned embeddings enable many downstream systems:</p>
+          <pre><code class="language-dot" data-graphviz>
+digraph clip_ecosystem {
+  rankdir=TB;
+  node [fontsize=10, shape=box, style=rounded];
+
+  clip [label="CLIP\nEmbeddings", shape=ellipse, style=filled, fillcolor="#e8f4f8"];
+  
+  caption [label="+ Language Model\n→ Image Captioning"];
+  diffusion [label="+ Diffusion Model\n→ Text-to-Image"];
+  vqa [label="+ QA Head\n→ Visual QA"];
+  seg [label="+ Decoder\n→ Segmentation"];
+  
+  clip -> caption;
+  clip -> diffusion;
+  clip -> vqa;
+  clip -> seg;
+}
+          </code></pre>
+          <p class="small fragment">
+            CLIP provides the <strong>vision-language bridge</strong>; other models provide the <strong>generation capabilities</strong>.
+          </p>
+        </section>
+
+        <section>
+          <h3>Modern Image Captioning with CLIP</h3>
+          <p class="small">Use CLIP as the visual encoder, feed into a language model:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph clip_caption {
+  rankdir=LR;
+  node [fontsize=12, shape=box, style=rounded, width=1.3, height=0.7];
+  edge [penwidth=1.5];
+  graph [nodesep=0.8, ranksep=1.0];
+
+  img [label="Image"];
+  clip [label="CLIP\nImage Encoder", style="filled,rounded", fillcolor="#e3f2fd"];
+  proj [label="Projection\nLayer"];
+  lm [label="Language Model\n(GPT-2, OPT, ...)", style="filled,rounded", fillcolor="#fff3e0"];
+  cap [label="Caption:\n\"A tabby cat\nsitting on...\"", style="filled,rounded", fillcolor="#e8f5e9"];
+
+  img -> clip -> proj -> lm -> cap;
+}
+          </code></pre>
+          </div>
+          <div class="two-column small">
+            <div>
+              <p><strong>CLIP's role:</strong></p>
+              <ul class="fragment">
+                <li>Extract semantic visual features</li>
+                <li>Pretrained contrastive loss</li>
+              </ul>
+            </div>
+            <div>
+              <p><strong>LM's role:</strong></p>
+              <ul class="fragment">
+                <li>Generate fluent text</li>
+                <li>Cross-entropy loss on captions</li>
+              </ul>
+            </div>
+          </div>
+          <p class="small fragment">
+            This is how models like <strong>BLIP</strong>, <strong>Flamingo</strong>, <strong>LLaVA</strong> work!
+          </p>
+        </section>
+
+        <section>
+          <h3>Text-to-Image with CLIP Guidance</h3>
+          <p class="small">Early text-to-image used CLIP to guide diffusion models:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph clip_guidance {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+  
+  subgraph cluster_text {
+    label="Text Path";
+    style=filled; fillcolor="#e3f2fd";
+    prompt [label="Prompt\n\"a cat wearing\na tiny hat\""];
+    clip_txt [label="CLIP Text\nEncoder"];
+    txt_emb [label="Text Emb", shape=ellipse];
+  }
+  
+  subgraph cluster_image {
+    label="Image Generation Path";
+    style=filled; fillcolor="#fff3e0";
+    noise [label="Random\nNoise"];
+    diffusion [label="Diffusion\nModel"];
+    img [label="Generated\nImage"];
+    clip_img [label="CLIP Image\nEncoder"];
+    img_emb [label="Image Emb", shape=ellipse];
+  }
+  
+  sim [label="Similarity", shape=diamond, style=filled, fillcolor="#e8f5e9"];
+  
+  prompt -> clip_txt -> txt_emb;
+  noise -> diffusion -> img -> clip_img -> img_emb;
+  txt_emb -> sim;
+  img_emb -> sim;
+  sim -> diffusion [style=dashed, color=red, label="gradient\n(guide)"];
+}
+          </code></pre>
+          </div>
+          <p class="small fragment">
+            CLIP is used twice: encode prompt, evaluate generated image, guide optimization!
+          </p>
+        </section>
+
+        <section>
+          <h3>Stable Diffusion Architecture</h3>
+          <img src="assets/An-illustration-of-stable-diffusion-working-with-an-example.png" alt="Stable Diffusion Architecture" style="max-height: 480px;">
+          <p class="small">
+            Stable Diffusion uses the CLIP text encoder to convert prompts into embeddings, which guide the diffusion process via cross-attention in the U-Net. The model operates in a compressed latent space for efficiency.
+          </p>
+        </section>
+
+        <section>
+          <h3>Latent Diffusion Model</h3>
+          <img src="assets/Latent Diffusion Model (Base Diagram-[3], Concept-Map Overlay- Author).webp" alt="Latent Diffusion Model Diagram" style="max-height: 480px;">
+          <p class="small">
+            The latent diffusion approach: images are encoded to a smaller latent space, diffusion happens there (faster!), then decoded back to pixels. CLIP text embeddings condition the denoising process.
+          </p>
+        </section>
+
+        <section>
+          <h3>CLIP in Modern Text-to-Image</h3>
+          <p class="small">DALL·E 2, Stable Diffusion, Midjourney all build on CLIP ideas:</p>
+          <table class="small">
+            <tr><th>Model</th><th>CLIP's Role</th></tr>
+            <tr class="fragment">
+              <td><strong>DALL·E 2</strong></td>
+              <td>Uses CLIP image embeddings as conditioning for diffusion</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Stable Diffusion</strong></td>
+              <td>Uses CLIP text encoder (frozen) to condition generation</td>
+            </tr>
+            <tr class="fragment">
+              <td><strong>Imagen</strong></td>
+              <td>Uses T5 text encoder instead of CLIP</td>
+            </tr>
+          </table>
+          <div class="highlight-box small fragment">
+            <strong>Common pattern:</strong> CLIP text embeddings → cross-attention in diffusion U-Net
+          </div>
+          <p class="small fragment">
+            CLIP also remains crucial for <strong>filtering</strong>, <strong>ranking</strong>, and <strong>safety</strong> in production systems.
+          </p>
+        </section>
+
+        <section>
+          <h3>The Vision-Language Timeline</h3>
+          <div class="small">
+            <div class="timeline-item fragment">
+              <strong>2014-2015:</strong> CNN + RNN captioning (Show and Tell, Show Attend and Tell)
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2017:</strong> Transformers replace RNNs for text
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2018-2019:</strong> BERT/GPT show power of pretraining
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2020:</strong> Vision Transformers (ViT) show Transformers work for images
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2021:</strong> <strong>CLIP</strong> — universal vision-language alignment
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2021-2022:</strong> CLIP + LMs → flexible captioning, VQA
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2022+:</strong> CLIP + Diffusion → DALL·E 2, Stable Diffusion
+            </div>
+            <div class="timeline-item fragment">
+              <strong>2023+:</strong> Multimodal LLMs (GPT-4V, Gemini, LLaVA)
+            </div>
+          </div>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 7: Hands-On & Summary</h2>
+          <p>Putting it all together</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PART 8: HANDS-ON & SUMMARY                -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Using CLIP: Quick Start</h3>
+          <pre class="code-small"><code class="language-python"># Install: pip install git+https://github.com/openai/CLIP.git
+
+import clip
+import torch
+from PIL import Image
+
+# Load model (downloads on first run)
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load("ViT-B/32", device=device)
+
+# Encode an image
+image = preprocess(Image.open("photo.jpg")).unsqueeze(0).to(device)
+image_features = model.encode_image(image)
+
+# Encode text
+text = clip.tokenize(["a dog", "a cat", "a bird"]).to(device)
+text_features = model.encode_text(text)
+
+# Compute similarity
+image_features /= image_features.norm(dim=-1, keepdim=True)
+text_features /= text_features.norm(dim=-1, keepdim=True)
+similarity = (100.0 * image_features @ text_features.T).softmax(dim=-1)
+
+print("Label probs:", similarity)  # Probability for each class</code></pre>
+        </section>
+
+        <section>
+          <h3>Available CLIP Models</h3>
+          <p class="small">OpenAI released several CLIP variants:</p>
+          <table class="small">
+            <tr><th>Model</th><th>Image Encoder</th><th>Embedding Dim</th><th>Speed</th><th>Accuracy</th></tr>
+            <tr class="fragment"><td>RN50</td><td>ResNet-50</td><td>1024</td><td>Fast</td><td>Good</td></tr>
+            <tr class="fragment"><td>RN101</td><td>ResNet-101</td><td>512</td><td>Medium</td><td>Better</td></tr>
+            <tr class="fragment"><td>ViT-B/32</td><td>ViT-Base, 32px patches</td><td>512</td><td>Fast</td><td>Good</td></tr>
+            <tr class="fragment"><td>ViT-B/16</td><td>ViT-Base, 16px patches</td><td>512</td><td>Medium</td><td>Better</td></tr>
+            <tr class="fragment"><td>ViT-L/14</td><td>ViT-Large, 14px patches</td><td>768</td><td>Slow</td><td>Best</td></tr>
+          </table>
+          <pre class="fragment"><code class="language-python"># List available models
+print(clip.available_models())
+# ['RN50', 'RN101', 'RN50x4', 'RN50x16', 'RN50x64', 
+#  'ViT-B/32', 'ViT-B/16', 'ViT-L/14', 'ViT-L/14@336px']</code></pre>
+        </section>
+
+        <section>
+          <h3>Hands-On / Homework Ideas</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Zero-shot classification:</strong> Classify images from a custom dataset using text prompts.</li>
+            <li class="fragment"><strong>Image search:</strong> Build a text-to-image retrieval system with a collection of photos.</li>
+            <li class="fragment"><strong>Prompt engineering:</strong> Experiment with different prompt formats and measure accuracy changes.</li>
+            <li class="fragment"><strong>Similarity visualization:</strong> Plot CLIP embeddings with t-SNE/UMAP for images and their captions.</li>
+            <li class="fragment"><strong>Explore failure cases:</strong> Find images that CLIP misclassifies — what patterns emerge?</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Key Takeaways</h3>
+          <ul class="small">
+            <li class="fragment"><strong>CLIP is not a generator</strong> — it produces embeddings, not text or images.</li>
+            <li class="fragment"><strong>Contrastive learning</strong> is the core innovation — match pairs, push apart non-pairs.</li>
+            <li class="fragment"><strong>Shared embedding space</strong> enables zero-shot transfer to new tasks.</li>
+            <li class="fragment"><strong>Scale matters</strong> — 400M image-text pairs from the web.</li>
+            <li class="fragment"><strong>CLIP enables ecosystems</strong> — captioning, generation, VQA all build on CLIP.</li>
+          </ul>
+          <div class="highlight-box small fragment">
+            <strong>The paradigm shift:</strong> From task-specific supervised learning to general-purpose representation learning.
+          </div>
+        </section>
+
+        <section>
+          <h3>Further Reading &amp; Resources</h3>
+          <ul class="small">
+            <li class="fragment"><a href="https://openai.com/research/clip" target="_blank">CLIP Paper</a> — "Learning Transferable Visual Models From Natural Language Supervision"</li>
+            <li class="fragment"><a href="https://github.com/openai/CLIP" target="_blank">OpenAI CLIP GitHub</a> — Official implementation</li>
+            <li class="fragment"><a href="https://huggingface.co/openai/clip-vit-base-patch32" target="_blank">Hugging Face CLIP</a> — Easy-to-use transformers integration</li>
+            <li class="fragment"><a href="https://www.youtube.com/watch?v=T9XSU0pKX2E" target="_blank">CLIP Explained (Yannic Kilcher)</a> — Video walkthrough</li>
+            <li class="fragment"><a href="https://lilianweng.github.io/posts/2021-05-31-contrastive/" target="_blank">Contrastive Learning Survey</a> — Lilian Weng's deep dive</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
+    <script>
+      initializeSlides({
+        width: 1536,
+        height: 864,
+      });
+    </script>
+  </body>
+</html>
+
