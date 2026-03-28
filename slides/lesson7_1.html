@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lesson 7.1 — Recurrent Neural Networks &amp; LSTMs</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css" id="theme">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/monokai.css">
+    <link rel="stylesheet" href="assets/slides-common.css">
+    <style>
+      .code-small pre code { font-size: 0.8em; }
+      .two-column { display: flex; gap: 2rem; align-items: flex-start; }
+      .two-column > div { flex: 1; }
+      .small { font-size: 0.9em; }
+      .highlight-box { background: #e8f4f8; padding: 1rem; border-radius: 8px; margin: 1rem 0; }
+      .transition-slide { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+      .transition-slide h2 { color: white; }
+      .transition-slide p { color: rgba(255,255,255,0.9); }
+      .graphviz-large .graphviz svg { max-width: 95%; }
+      .gate-table td, .gate-table th { font-size: 0.75em; padding: 0.4rem 0.8rem; }
+    </style>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+
+        <!-- ========================================== -->
+        <!-- TITLE & OBJECTIVES                        -->
+        <!-- ========================================== -->
+
+        <section>
+          <h2>Lesson 7.1: Recurrent Neural Networks &amp; LSTMs</h2>
+          <h3>Learning Objectives</h3>
+          <ul>
+            <li class="fragment">Understand how RNNs process sequences using hidden states.</li>
+            <li class="fragment">Explain the vanishing gradient problem and why vanilla RNNs struggle with long sequences.</li>
+            <li class="fragment">Describe LSTM gates (forget, input, output) and the cell state.</li>
+            <li class="fragment">Use <code>nn.RNN</code> and <code>nn.LSTM</code> in PyTorch.</li>
+          </ul>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- RECAP & MOTIVATION                        -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Recap: Embeddings → Sequences</h3>
+          <p class="small">In Lesson 6 we turned tokens into dense vectors. But <strong>mean pooling</strong> loses word order.</p>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">"Dog bites man" vs "Man bites dog" — same bag of embeddings, opposite meaning.</li>
+                <li class="fragment">We need a model that reads tokens <strong>one by one</strong> and remembers what it has seen.</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph order_matters {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+  a [label="Dog"];
+  b [label="bites"];
+  c [label="man"];
+  a -> b -> c;
+}
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 1: Vanilla RNNs</h2>
+          <p>Processing sequences step by step</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VANILLA RNN                               -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>The Recurrent Neural Network (RNN)</h3>
+          <p class="small">At each time step \(t\), the RNN reads an input \(\mathbf{x}_t\) and updates its hidden state:</p>
+          <p>\[ \mathbf{h}_t = \tanh\!\bigl(\mathbf{W}_{xh}\,\mathbf{x}_t + \mathbf{W}_{hh}\,\mathbf{h}_{t-1} + \mathbf{b}\bigr) \]</p>
+          <ul class="small">
+            <li class="fragment">\(\mathbf{h}_t \in \mathbb{R}^{d_h}\) — hidden state (the "memory").</li>
+            <li class="fragment">\(\mathbf{W}_{xh}\) and \(\mathbf{W}_{hh}\) — <strong>shared</strong> across all time steps.</li>
+            <li class="fragment">The same function is applied repeatedly — that's the "recurrence".</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Unrolled RNN</h3>
+          <p class="small">We can "unroll" the loop to see the full computation graph:</p>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph rnn_unrolled {
+  rankdir=LR;
+  node [fontsize=11];
+  graph [nodesep=0.6, ranksep=0.9];
+
+  x1 [label="x₁", shape=box, style=rounded];
+  x2 [label="x₂", shape=box, style=rounded];
+  x3 [label="x₃", shape=box, style=rounded];
+  x4 [label="x₄", shape=box, style=rounded];
+
+  h0 [label="h₀", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h1 [label="h₁", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h2 [label="h₂", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h3 [label="h₃", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h4 [label="h₄", shape=circle, style=filled, fillcolor="#e3f2fd"];
+
+  y1 [label="y₁", shape=box, style=rounded];
+  y2 [label="y₂", shape=box, style=rounded];
+  y3 [label="y₃", shape=box, style=rounded];
+  y4 [label="y₄", shape=box, style=rounded];
+
+  h0 -> h1 -> h2 -> h3 -> h4;
+  x1 -> h1;
+  x2 -> h2;
+  x3 -> h3;
+  x4 -> h4;
+  h1 -> y1;
+  h2 -> y2;
+  h3 -> y3;
+  h4 -> y4;
+}
+          </code></pre>
+          </div>
+          <ul class="small">
+            <li class="fragment">Each \(\mathbf{h}_t\) carries a summary of all inputs seen so far.</li>
+            <li class="fragment">Outputs \(\mathbf{y}_t\) can be produced at every step or just the last one.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>RNN Use Cases</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Many-to-One</h4>
+              <ul>
+                <li class="fragment">Sentiment classification: read all words, use final \(\mathbf{h}_T\) to predict label.</li>
+              </ul>
+              <h4>Many-to-Many</h4>
+              <ul>
+                <li class="fragment">Language modelling: predict next word at each step.</li>
+                <li class="fragment">Named entity recognition: tag each token.</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph many_to_one {
+  rankdir=LR;
+  node [fontsize=10, shape=box, style=rounded];
+
+  x1 [label="I"];
+  x2 [label="love"];
+  x3 [label="it"];
+
+  h1 [label="h₁", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h2 [label="h₂", shape=circle, style=filled, fillcolor="#e3f2fd"];
+  h3 [label="h₃", shape=circle, style=filled, fillcolor="#e3f2fd"];
+
+  y [label="Positive ✓", style="filled,rounded", fillcolor="#e8f5e9"];
+
+  h1 -> h2 -> h3;
+  x1 -> h1;
+  x2 -> h2;
+  x3 -> h3;
+  h3 -> y;
+}
+              </code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>PyTorch <code>nn.RNN</code></h3>
+          <pre class="code-small"><code class="language-python">import torch
+import torch.nn as nn
+
+# input_size=64 (embedding dim), hidden_size=128
+rnn = nn.RNN(input_size=64, hidden_size=128, batch_first=True)
+
+# x: (batch, seq_len, 64)
+x = torch.randn(2, 10, 64)
+
+# output: all hidden states (2, 10, 128)
+# h_n:    last hidden state  (1, 2, 128)
+output, h_n = rnn(x)</code></pre>
+          <ul class="small">
+            <li class="fragment"><code>output</code> contains \(\mathbf{h}_1, \dots, \mathbf{h}_T\) for every time step.</li>
+            <li class="fragment"><code>h_n</code> is the final hidden state — useful for classification.</li>
+            <li class="fragment"><code>batch_first=True</code> makes the batch dimension come first.</li>
+          </ul>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 2: The Vanishing Gradient Problem</h2>
+          <p>Why vanilla RNNs forget</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- VANISHING GRADIENT                        -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>Backpropagation Through Time (BPTT)</h3>
+          <p class="small">Training an RNN means unrolling all time steps and back-propagating through the chain:</p>
+          <p>\[ \frac{\partial \mathcal{L}}{\partial \mathbf{W}_{hh}} = \sum_{t=1}^{T} \frac{\partial \mathcal{L}_t}{\partial \mathbf{h}_t} \prod_{k=t}^{1} \frac{\partial \mathbf{h}_k}{\partial \mathbf{h}_{k-1}} \]</p>
+          <ul class="small">
+            <li class="fragment">The product \(\prod \frac{\partial \mathbf{h}_k}{\partial \mathbf{h}_{k-1}}\) is a chain of Jacobians.</li>
+            <li class="fragment">If each factor is &lt; 1 → product <strong>shrinks exponentially</strong> (vanishing).</li>
+            <li class="fragment">If each factor is &gt; 1 → product <strong>explodes</strong> (exploding gradients).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Vanishing Gradients: Intuition</h3>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Imagine multiplying 0.9 by itself 50 times: \(0.9^{50} \approx 0.005\).</li>
+                <li class="fragment">Early tokens barely influence the loss — the gradient "forgets" them.</li>
+                <li class="fragment">The RNN can't learn long-range dependencies like: <em>"The cat, which sat on the mat, <strong>was</strong> happy."</em></li>
+                <li class="fragment">Exploding gradients can be clipped; vanishing gradients need an architecture fix.</li>
+              </ul>
+            </div>
+            <div>
+              <pre><code class="language-dot" data-graphviz>
+digraph vanishing {
+  rankdir=LR;
+  node [fontsize=10, shape=circle];
+
+  h1 [label="h₁", style=filled, fillcolor="#ffcdd2"];
+  h2 [label="h₂", style=filled, fillcolor="#ef9a9a"];
+  h3 [label="h₃", style=filled, fillcolor="#e57373"];
+  h4 [label="h₄", style=filled, fillcolor="#ef5350"];
+  h5 [label="h₅", style=filled, fillcolor="#f44336"];
+  L  [label="Loss", shape=box, style=rounded];
+
+  h1 -> h2 [label="×0.9"];
+  h2 -> h3 [label="×0.9"];
+  h3 -> h4 [label="×0.9"];
+  h4 -> h5 [label="×0.9"];
+  h5 -> L;
+}
+              </code></pre>
+              <p class="small fragment" style="text-align:center;">Gradient signal fades as it travels back in time.</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 3: LSTM — Long Short-Term Memory</h2>
+          <p>Gates that learn what to remember and forget</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- LSTM                                      -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>LSTM: The Key Idea</h3>
+          <div class="highlight-box small">
+            <strong>Core insight:</strong> Add a separate <em>cell state</em> \(\mathbf{c}_t\) that flows through time with minimal transformation — like a conveyor belt. Gates control what gets added or removed.
+          </div>
+          <ul class="small">
+            <li class="fragment">Introduced by Hochreiter &amp; Schmidhuber (1997).</li>
+            <li class="fragment">Three gates: <strong>forget</strong>, <strong>input</strong>, <strong>output</strong>.</li>
+            <li class="fragment">The cell state allows gradients to flow over many time steps without vanishing.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>LSTM Architecture Overview</h3>
+          <div class="graphviz-large">
+          <pre><code class="language-dot" data-graphviz>
+digraph lstm_cell {
+  rankdir=LR;
+  node [fontsize=11, shape=box, style=rounded];
+  graph [nodesep=0.4, ranksep=0.7];
+
+  subgraph cluster_cell {
+    label="LSTM Cell at time t";
+    style=rounded;
+    color="#bbdefb";
+
+    ft [label="Forget\nGate (f)", style="filled,rounded", fillcolor="#ffcdd2"];
+    it [label="Input\nGate (i)", style="filled,rounded", fillcolor="#c8e6c9"];
+    ct_cand [label="Candidate\nc̃ₜ", style="filled,rounded", fillcolor="#fff9c4"];
+    ot [label="Output\nGate (o)", style="filled,rounded", fillcolor="#bbdefb"];
+  }
+
+  ct_prev [label="cₜ₋₁\n(cell state)", shape=ellipse];
+  ht_prev [label="hₜ₋₁\n(hidden)", shape=ellipse];
+  xt [label="xₜ\n(input)", shape=ellipse];
+  ct_next [label="cₜ\n(cell state)", shape=ellipse];
+  ht_next [label="hₜ\n(hidden)", shape=ellipse];
+
+  xt -> ft;
+  xt -> it;
+  xt -> ct_cand;
+  xt -> ot;
+
+  ht_prev -> ft;
+  ht_prev -> it;
+  ht_prev -> ct_cand;
+  ht_prev -> ot;
+
+  ct_prev -> ft [style=dashed];
+  ft -> ct_next [label="× forget"];
+  it -> ct_next [label="× candidate"];
+  ct_cand -> ct_next;
+  ct_next -> ot;
+  ot -> ht_next;
+}
+          </code></pre>
+          </div>
+        </section>
+
+        <section>
+          <h3>Step 1: Forget Gate</h3>
+          <p class="small">Decides what to <strong>erase</strong> from the cell state.</p>
+          <p>\[ \mathbf{f}_t = \sigma\!\bigl(\mathbf{W}_f [\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_f\bigr) \]</p>
+          <ul class="small">
+            <li class="fragment">\(\sigma\) outputs values in \([0, 1]\) for each dimension.</li>
+            <li class="fragment">Values near 0 → "forget this"; near 1 → "keep this".</li>
+            <li class="fragment">Example: when the subject changes, forget the old subject's gender/number.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Step 2: Input Gate &amp; Candidate</h3>
+          <p class="small">Decides what <strong>new information</strong> to store in the cell state.</p>
+          <p>\[ \mathbf{i}_t = \sigma\!\bigl(\mathbf{W}_i [\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_i\bigr) \]</p>
+          <p>\[ \tilde{\mathbf{c}}_t = \tanh\!\bigl(\mathbf{W}_c [\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_c\bigr) \]</p>
+          <ul class="small">
+            <li class="fragment">\(\mathbf{i}_t\) controls <em>how much</em> of the new candidate to write.</li>
+            <li class="fragment">\(\tilde{\mathbf{c}}_t\) is the proposed new content (like a vanilla RNN update).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Step 3: Update Cell State</h3>
+          <p class="small">Combine forget and input to produce the new cell state:</p>
+          <p>\[ \mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \mathbf{i}_t \odot \tilde{\mathbf{c}}_t \]</p>
+          <ul class="small">
+            <li class="fragment">\(\odot\) = element-wise multiplication.</li>
+            <li class="fragment">The forget gate erases old info; the input gate writes new info.</li>
+            <li class="fragment">This is the "conveyor belt" — gradients can flow through \(\mathbf{c}\) without repeated nonlinearities.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Step 4: Output Gate</h3>
+          <p class="small">Decides what part of the cell state to <strong>expose</strong> as the hidden state:</p>
+          <p>\[ \mathbf{o}_t = \sigma\!\bigl(\mathbf{W}_o [\mathbf{h}_{t-1}, \mathbf{x}_t] + \mathbf{b}_o\bigr) \]</p>
+          <p>\[ \mathbf{h}_t = \mathbf{o}_t \odot \tanh(\mathbf{c}_t) \]</p>
+          <ul class="small">
+            <li class="fragment">The cell state holds long-term memory.</li>
+            <li class="fragment">The hidden state \(\mathbf{h}_t\) is the "working memory" exposed to the next layer / output.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>LSTM Gates Summary</h3>
+          <table class="small gate-table">
+            <thead>
+              <tr>
+                <th>Gate</th>
+                <th>Activation</th>
+                <th>Role</th>
+                <th>Analogy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="fragment">
+                <td><strong>Forget</strong> \(\mathbf{f}_t\)</td>
+                <td>Sigmoid</td>
+                <td>Erase old cell info</td>
+                <td>Eraser on a whiteboard</td>
+              </tr>
+              <tr class="fragment">
+                <td><strong>Input</strong> \(\mathbf{i}_t\)</td>
+                <td>Sigmoid</td>
+                <td>Scale new candidate</td>
+                <td>Deciding what to write</td>
+              </tr>
+              <tr class="fragment">
+                <td><strong>Candidate</strong> \(\tilde{\mathbf{c}}_t\)</td>
+                <td>Tanh</td>
+                <td>Proposed new content</td>
+                <td>Draft notes</td>
+              </tr>
+              <tr class="fragment">
+                <td><strong>Output</strong> \(\mathbf{o}_t\)</td>
+                <td>Sigmoid</td>
+                <td>Filter cell → hidden</td>
+                <td>Choosing what to say aloud</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h3>Why LSTMs Fix Vanishing Gradients</h3>
+          <div class="highlight-box small">
+            <strong>Key:</strong> The cell state update \(\mathbf{c}_t = \mathbf{f}_t \odot \mathbf{c}_{t-1} + \dots\) is a <em>linear</em> path. Gradients flow through multiplication by \(\mathbf{f}_t\) (close to 1), not through repeated tanh squashing.
+          </div>
+          <ul class="small">
+            <li class="fragment">If the forget gate stays open (\(\mathbf{f} \approx 1\)), information persists for many steps.</li>
+            <li class="fragment">The network <strong>learns</strong> when to remember and when to forget.</li>
+            <li class="fragment">In practice, LSTMs can capture dependencies over 100+ time steps.</li>
+          </ul>
+        </section>
+
+        <!-- TRANSITION SLIDE -->
+        <section class="transition-slide" data-background-gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)">
+          <h2>Part 4: Using LSTMs in PyTorch</h2>
+          <p>From theory to code</p>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- PYTORCH LSTM                              -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>PyTorch <code>nn.LSTM</code></h3>
+          <pre class="code-small"><code class="language-python">import torch
+import torch.nn as nn
+
+lstm = nn.LSTM(
+    input_size=64,    # embedding dim
+    hidden_size=128,  # hidden state size
+    num_layers=1,
+    batch_first=True,
+)
+
+x = torch.randn(2, 10, 64)  # (batch, seq_len, input_size)
+
+# output: all hidden states   (2, 10, 128)
+# (h_n, c_n): final hidden & cell states
+output, (h_n, c_n) = lstm(x)</code></pre>
+          <ul class="small">
+            <li class="fragment">Same API as <code>nn.RNN</code>, but returns <strong>both</strong> \(\mathbf{h}_n\) and \(\mathbf{c}_n\).</li>
+            <li class="fragment"><code>num_layers</code> stacks multiple LSTMs on top of each other.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Sentiment Classifier with LSTM</h3>
+          <pre class="code-small"><code class="language-python">class LSTMClassifier(nn.Module):
+    def __init__(self, vocab_size, emb_dim=64, hidden_dim=128):
+        super().__init__()
+        self.embedding = nn.Embedding(vocab_size, emb_dim)
+        self.lstm = nn.LSTM(emb_dim, hidden_dim, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, 1)
+
+    def forward(self, ids):
+        x = self.embedding(ids)           # (B, T, emb_dim)
+        _, (h_n, _) = self.lstm(x)        # h_n: (1, B, hidden_dim)
+        logits = self.fc(h_n.squeeze(0))  # (B, 1)
+        return logits.squeeze(-1)</code></pre>
+          <ul class="small">
+            <li class="fragment">We only use the <strong>last hidden state</strong> for classification.</li>
+            <li class="fragment">Compare with the mean-pooling classifier from Lesson 6 — LSTM preserves word order.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Stacked &amp; Bidirectional LSTMs</h3>
+          <div class="two-column small">
+            <div>
+              <h4>Stacked (multi-layer)</h4>
+              <ul>
+                <li class="fragment">Output of layer \(\ell\) becomes input to layer \(\ell+1\).</li>
+                <li class="fragment">Deeper = more capacity, but slower.</li>
+              </ul>
+              <h4>Bidirectional</h4>
+              <ul>
+                <li class="fragment">Two LSTMs: one reads left→right, one reads right→left.</li>
+                <li class="fragment">Hidden states are concatenated: \([\overrightarrow{\mathbf{h}}_t; \overleftarrow{\mathbf{h}}_t]\).</li>
+                <li class="fragment">Each token sees full context from both sides.</li>
+              </ul>
+            </div>
+            <div>
+              <pre class="code-small"><code class="language-python">bi_lstm = nn.LSTM(
+    input_size=64,
+    hidden_size=128,
+    num_layers=2,
+    batch_first=True,
+    bidirectional=True,
+)
+
+x = torch.randn(2, 10, 64)
+out, (h_n, c_n) = bi_lstm(x)
+# out: (2, 10, 256)  — 128 × 2 dirs
+# h_n: (4, 2, 128)   — 2 layers × 2 dirs</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3>GRU: A Simpler Alternative</h3>
+          <p class="small">The Gated Recurrent Unit (Cho et al., 2014) merges forget + input gates into a single <strong>update gate</strong>.</p>
+          <div class="two-column small">
+            <div>
+              <ul>
+                <li class="fragment">Two gates: <strong>reset</strong> \(\mathbf{r}_t\) and <strong>update</strong> \(\mathbf{z}_t\).</li>
+                <li class="fragment">No separate cell state — just \(\mathbf{h}_t\).</li>
+                <li class="fragment">Fewer parameters → faster to train.</li>
+                <li class="fragment">Performance often comparable to LSTM.</li>
+              </ul>
+            </div>
+            <div>
+              <pre class="code-small"><code class="language-python"># Same API, just swap LSTM → GRU
+gru = nn.GRU(
+    input_size=64,
+    hidden_size=128,
+    batch_first=True,
+)
+
+out, h_n = gru(x)  # no cell state</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- LIMITATIONS & LOOKING AHEAD               -->
+        <!-- ========================================== -->
+
+        <section>
+          <h3>LSTM Limitations</h3>
+          <ul class="small">
+            <li class="fragment"><strong>Sequential processing:</strong> \(\mathbf{h}_t\) depends on \(\mathbf{h}_{t-1}\) — cannot parallelize across time steps.</li>
+            <li class="fragment"><strong>Long sequences:</strong> even LSTMs struggle beyond ~500 tokens in practice.</li>
+            <li class="fragment"><strong>Fixed bottleneck:</strong> the entire sequence is compressed into a single vector \(\mathbf{h}_T\).</li>
+            <li class="fragment">These limitations motivated <strong>Attention</strong> and <strong>Transformers</strong> (next lesson).</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Homework / Hands-On Ideas</h3>
+          <ul class="small">
+            <li class="fragment">Build an LSTM sentiment classifier on a movie review dataset.</li>
+            <li class="fragment">Compare LSTM vs mean-pooling classifier from Lesson 6 — does word order help?</li>
+            <li class="fragment">Experiment with <code>num_layers</code> and <code>bidirectional</code> settings.</li>
+            <li class="fragment">Try GRU and compare training speed and accuracy.</li>
+            <li class="fragment">Visualize hidden states over time for a sample sentence.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Looking Ahead</h3>
+          <ul class="small">
+            <li class="fragment">LSTMs process tokens one by one — <strong>Attention</strong> lets a model look at all tokens at once.</li>
+            <li class="fragment">The <strong>Transformer</strong> architecture replaces recurrence entirely with self-attention.</li>
+            <li class="fragment">Next lesson: Attention, Transformers, BERT &amp; GPT.</li>
+          </ul>
+        </section>
+
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/notes/notes.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@5/plugin/highlight/highlight.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+    <script src="assets/slides-common.js"></script>
+    <script>
+      initializeSlides({
+        width: 1536,
+        height: 864,
+      });
+    </script>
+  </body>
+</html>
